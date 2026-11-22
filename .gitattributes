@@ -1,0 +1,4 @@
+# Preserve Prisma migration artifacts byte-for-byte. The machine-wide Git config
+# sets core.autocrlf=true, which would rewrite line endings on text files; marking
+# migrations binary keeps the committed blobs identical to the working tree.
+backend/prisma/migrations/** binary

@@ -1,0 +1,277 @@
+@import "tailwindcss";
+
+/* Tailwind v4: design tokens are declared here as CSS custom properties and
+   consumed by utilities such as `bg-primary-700`, `text-ink`, `border-line`,
+   `bg-canvas`. The JavaScript config is loaded explicitly (v4 no longer
+   auto-detects it) so existing class names keep resolving. */
+@config "../../tailwind.config.ts";
+
+@theme {
+  /* Brand + neutral palette — Phase 9: forest green / wine / purple / ivory / terracotta */
+  --color-primary-50: #f0f6f4;
+  --color-primary-100: #dce9e2;
+  --color-primary-200: #b9d2ca;
+  --color-primary-300: #96b9b1;
+  --color-primary-400: #73a198;
+  --color-primary-500: #50897f;
+  --color-primary-600: #315f50;   /* primary forest green */
+  --color-primary-700: #23483d;   /* deep green */
+  --color-primary-800: #1d372e;
+  --color-primary-900: #142622;
+  --color-primary-950: #0a1714;
+
+  --color-wine-50: #f7eef1;
+  --color-wine-100: #eadfe6;
+  --color-wine-200: #d5bdcf;
+  --color-wine-300: #c0a5b7;
+  --color-wine-400: #aa8da0;
+  --color-wine-500: #702f45;   /* wine / burgundy */
+  --color-wine-600: #4d2032;   /* deep wine */
+  --color-wine-700: #3d1928;
+  --color-wine-800: #2d131d;
+  --color-wine-900: #1e0d13;
+
+  --color-purple-50: #f2f0f5;
+  --color-purple-100: #e7e3ec;
+  --color-purple-200: #cfc6dd;
+  --color-purple-300: #b7a9cf;
+  --color-purple-400: #9f8cc2;
+  --color-purple-500: #76618f;   /* muted purple */
+  --color-purple-600: #514365;   /* deep purple */
+  --color-purple-700: #403451;
+  --color-purple-800: #30263d;
+  --color-purple-900: #1e0d13;
+
+  --color-canvas: #f7f4ee;        /* warm off-white page background */
+  --color-surface: #fffefa;       /* warm white surface */
+  --color-surface-subtle: #faf8f5;
+
+  --color-ink: #292c2a;           /* primary text */
+  --color-body: #3a3d39;
+  /* Accessibility refinement (Lighthouse color-contrast audit, Phase 9):
+     the original #74736f measured 4.32:1 on the ivory canvas — below the
+     4.5:1 AA threshold for body-size text. #6b6a66 measures 4.93:1. */
+  --color-secondary: #6b6a66;     /* secondary text */
+  /* Same refinement for muted text: #8c8a87 was ~3:1 on ivory. #6f6e69
+     measures 4.65:1, keeping the lower-emphasis step in the type scale
+     while satisfying AA. */
+  --color-muted: #6f6e69;         /* muted text */
+
+  --color-line: #e6e0d7;          /* borders */
+  --color-line-input: #b9b1a8;
+  --color-line-input-hover: #8c8a87;
+
+  --color-success-text: #315f50;   /* forest green */
+  --color-success-bg: #f0faf6;
+  --color-success-border: #a7f3d0;
+
+  --color-warning-text: #92400e;   /* muted gold */
+  --color-warning-bg: #fffbeb;
+  --color-warning-border: #fde68a;
+
+  --color-danger-text: #d66b4d;   /* terracotta */
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-danger-solid: #dc2626;
+  --color-danger-solid-hover: #b91c1c;
+
+  --color-info-text: #514365;    /* deep purple */
+  --color-info-bg: #f2f0f5;
+  --color-info-border: #d5bdcf;
+
+  --color-neutral-text: #3a3d39;
+  --color-neutral-bg: #f3f4f6;
+  --color-neutral-border: #e5e7eb;
+
+  --color-gold-text: #92400e;      /* muted gold */
+  --color-gold-bg: #fffbeb;
+  --color-gold-border: #fde68a;
+
+  --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-family-serif: "Times New Roman", "Liberation Serif", serif;
+
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.05);
+  --shadow-panel: 0 6px 16px -6px rgb(15 23 42 / 0.10);
+  --shadow-dialog: 0 20px 50px -12px rgb(13 26 48 / 0.35);
+
+  --max-width-prose: 65ch;
+}
+
+/* v3 default preservation (official upgrade-guide snippets) — keeps the
+   approved UI pixel-identical under v4's changed defaults: */
+@layer base {
+  /* v3 borders/divides defaulted to gray-200 (= our `line` token #e5e0d7);
+     v4 defaults to currentColor. */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-line, currentColor);
+  }
+
+  /* v3 placeholders rendered gray-400; v4 uses 50%-opacity text color. */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-muted);
+  }
+
+  /* v3 preflight gave buttons cursor: pointer; v4 uses browser default. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: var(--color-primary-700);
+  color: #ffffff;
+}
+
+/* Keep numeric inputs tidy — no redundant spinners inside forms. */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 100;
+  padding: 8px 16px;
+  background: var(--color-primary-700);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: top 0.2s;
+}
+.skip-link:focus {
+  top: 16px;
+}
+
+/* (text-balance / text-pretty are native Tailwind v4 utilities — the former
+   custom @layer utilities definitions were removed in the v4 migration.) */
+
+@layer utilities {
+  .font-serif {
+    font-family: var(--font-family-serif);
+  }
+}
+
+/* Respect users who prefer reduced motion: collapse decorative transitions
+   and animations to a single frame. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* ------------------------------------------------------------------ */
+/* First-visit welcome experience (Phase 10 §8)                        */
+/* Restrained, growth-inspired intro. The global prefers-reduced-motion */
+/* block above already neutralises the keyframes; the WelcomeGate also  */
+/* swaps to a static state when reduced motion is requested.            */
+/* ------------------------------------------------------------------ */
+
+@keyframes welcome-logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes welcome-text-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes welcome-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes welcome-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.welcome-logo-in {
+  animation: welcome-logo-in 0.7s ease-out both;
+}
+
+.welcome-text-in {
+  animation: welcome-text-in 0.6s ease-out 0.35s both;
+}
+
+.welcome-grow {
+  animation: welcome-grow 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+}
+
+.welcome-fade-out {
+  animation: welcome-fade-out 0.4s ease-in 1.5s both;
+}
+
+/* ------------------------------------------------------------------ */
+/* BrandLoader (shared route/data loading experience)                  */
+/* The overlay fades in with a short delay so fast loads never flash a */
+/* half-visible loader; under prefers-reduced-motion the fade is       */
+/* skipped entirely (static appear). The intro animations reuse the    */
+/* welcome-* keyframes above, which the global reduce-motion rule      */
+/* collapses to their final visible frame.                             */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: no-preference) {
+  .brand-loader-in {
+    animation: brand-loader-fade-in 0.16s ease-out 0.1s both;
+  }
+}
+
+@keyframes brand-loader-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

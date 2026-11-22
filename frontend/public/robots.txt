@@ -1,0 +1,4 @@
+# InternPath is an internal campus tool (academic demonstration project).
+# Keep it out of search indexes.
+User-agent: *
+Disallow: /

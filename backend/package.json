@@ -1,0 +1,53 @@
+{
+  "name": "@internpath/backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "InternPath Express Backend API",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch --require dotenv/config src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:seed": "tsx --require dotenv/config prisma/seed.ts",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0",
+    "@types/pdfkit": "^0.17.7",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "5.3.0",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "nodemailer": "^10.6.1",
+    "pdfkit": "^0.20.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.17",
+    "@types/express": "5.0.6",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^22.0.0",
+    "@types/supertest": "^7.2.1",
+    "eslint": "^8.57.0",
+    "prisma": "5.22.0",
+    "supertest": "^7.0.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
