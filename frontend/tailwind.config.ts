@@ -69,17 +69,27 @@ module.exports = {
         'line-input': '#b9b1a8',
         'line-input-hover': '#8c8a87',
 
+        // Terracotta accent for marketing CTAs (owner reference: "terracotta
+        // primary actions"). Distinct from danger red so CTAs never read as errors.
+        accent: {
+          50: '#fbf1ec',
+          100: '#f5ddd1',
+          500: '#c4592f',
+          600: '#a9471f',   /* AA on white for text and white-on-fill */
+          700: '#8c3a19',
+        },
+
         'success-text': '#315f50',   /* forest green */
         'success-bg': '#f0faf6',
-        'success-border': '#a7f3d0',
+        'success-border': '#b9d2ca',
 
         'warning-text': '#92400e',   /* muted gold */
         'warning-bg': '#fffbeb',
         'warning-border': '#fde68a',
 
-        'danger-text': '#d66b4d',   /* terracotta */
-        'danger-bg': '#fef2f2',
-        'danger-border': '#fecaca',
+        'danger-text': '#b4432a',   /* deep terracotta — 5.4:1 on danger-bg (AA) */
+        'danger-bg': '#fdf2ef',
+        'danger-border': '#f1c6b9',
         'danger-solid': '#dc2626',
         'danger-solid-hover': '#b91c1c',
 
@@ -96,7 +106,9 @@ module.exports = {
         'gold-border': '#fde68a',
       },
       fontFamily: {
+        // Self-hosted via next/font (see app/layout.tsx); system stack as fallback.
         sans: [
+          'var(--font-inter)',
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',

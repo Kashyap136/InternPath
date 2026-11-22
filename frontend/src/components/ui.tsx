@@ -18,14 +18,15 @@ const focusRing =
 /* Buttons                                                             */
 /* ------------------------------------------------------------------ */
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'wine';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'wine' | 'accent';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 const buttonBase =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-150 motion-safe:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
 const buttonVariants: Record<ButtonVariant, string> = {
   primary: 'bg-primary-700 text-white hover:bg-primary-800 active:bg-primary-900 shadow-xs',
+  accent: 'bg-accent-600 text-white hover:bg-accent-700 active:bg-accent-700 shadow-xs',
   wine: 'bg-wine-600 text-white hover:bg-wine-700 active:bg-wine-800 shadow-xs',
   danger: 'bg-danger-solid text-white hover:bg-danger-solid-hover active:bg-danger-solid-hover shadow-xs',
   secondary: 'border border-line-input bg-white text-ink hover:border-line-input-hover hover:bg-surface-subtle',
@@ -160,7 +161,13 @@ export function Spinner({
 /* ------------------------------------------------------------------ */
 
 function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  // Ignore bracketed suffixes and words without letters, e.g. "Aarav Mehta
+  // (Demo)" → "AM" rather than "A(".
+  const parts = name
+    .replace(/\([^)]*\)/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((p) => /\p{L}/u.test(p));
   if (parts.length === 0) return '?';
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   const first = parts[0]!.charAt(0);
@@ -460,7 +467,7 @@ export function PasswordInput({
       >
         {showPassword ? (
           <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112.19 9.418a10.05 10.05 0 014.175-2.023c2.202 0 4.29.582 6.045 1.619a39.9 39.9 0 011.158 2.433c.552 1.462.772 3.016.772 4.582 0 1.504-.22 3.016-.772 4.582a39.9 39.9 0 01-1.158 2.433c-1.756 1.037-3.843 1.619-6.045 1.619a10.05 10.05 0 01-4.175-2.023A10.05 10.05 0 0112.19 9.418a10.05 10.05 0 011.685-.754c.278-.198.54-.415.783-.642a44.9 44.9 0 002.032-1.898c.458-.721.793-1.55.995-2.442a3.5 3.5 0 11-1.966-.274c-.457 1.898-.793 3.722-.995 5.587a10 10 0 01-.416 1.478 2.5 2.5 0 11-4.244-1.242c.483-1.846.818-3.712.995-5.586a34 34 0 01-.206-.71c-.381-1.29-.635-2.61-.783-3.95a10 10 0 01-.393-1.406c-.244-.973-.366-1.97-.366-2.997 0-1.484.22-2.944.645-4.347a10.05 10.05 0 014.175-2.023c2.202 0 4.29.582 6.045 1.619a39.9 39.9 0 011.158 2.433c.552 1.462.772 3.016.772 4.582 0 1.504-.22 3.016-.772 4.582a39.9 39.9 0 01-1.158 2.433c-1.756 1.037-3.843 1.619-6.045 1.619a10.05 10.05 0 01-4.175-2.023c-1.72-.923-3.054-2.265-3.99-3.776a10 10 0 01-.522-1.39c-.316-1.26-.515-2.552-.515-3.892 0-1.34.179-2.65.496-3.896 1.18-4.857 4.852-8.262 9.922-8.262 5.072 0 9.238 3.358 9.922 8.262.316 1.246.496 2.555.496 3.896 0 1.34-.18 2.651-.496 3.893a10 10 0 01-.522 1.39c-.936 1.506-2.27 2.852-3.99 3.775" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
           </svg>
         ) : (
           <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
@@ -602,7 +609,7 @@ export function StatusBadge({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${badgeStyles[tone]} ${className}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium ${badgeStyles[tone]} ${className}`}
     >
       {dot && (
         <span
@@ -646,7 +653,7 @@ export function EmptyState({
       } ${className}`}
     >
       {Icon && (
-        <span className="text-muted">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary-50 text-primary-700">
           <Icon className="h-5 w-5" />
         </span>
       )}
@@ -740,7 +747,7 @@ export function ProgressBar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuetext={valueText}
-      className={`h-1.5 w-full overflow-hidden rounded-full bg-line ${className}`}
+      className={`h-2 w-full overflow-hidden rounded-full bg-line ${className}`}
     >
       <div
         className={`h-full rounded-full transition-[width] duration-300 ${
@@ -775,10 +782,10 @@ export function Panel({
   return (
     <section
       aria-labelledby={title ? titleId : undefined}
-      className={`rounded-xl border border-line bg-white shadow-card ${className}`}
+      className={`rounded-2xl border border-line bg-white shadow-card ${className}`}
     >
       {(title || actions) && (
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3.5">
           <div className="min-w-0">
             {title && (
               <h2 id={titleId} className="text-[15px] font-semibold tracking-tight text-ink">
@@ -800,6 +807,70 @@ export function Panel({
 // Backwards-compatible name for Panel.
 export const Card = Panel;
 
+/**
+ * StatCard — one headline number with a label, an optional hint and an
+ * optional link. Used for dashboard summaries.
+ */
+export function StatCard({
+  label,
+  value,
+  hint,
+  href,
+  icon: Icon,
+  tone = 'primary',
+  className = '',
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  href?: string;
+  icon?: (props: { className?: string }) => React.ReactNode;
+  tone?: 'primary' | 'accent' | 'wine' | 'purple';
+  className?: string;
+}) {
+  const toneChip: Record<string, string> = {
+    primary: 'bg-primary-50 text-primary-700',
+    accent: 'bg-accent-50 text-accent-700',
+    wine: 'bg-wine-50 text-wine-600',
+    purple: 'bg-purple-50 text-purple-600',
+  };
+  const body = (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[13px] font-medium text-secondary">{label}</p>
+        {Icon && (
+          <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneChip[tone]}`}>
+            <Icon className="h-4 w-4" />
+          </span>
+        )}
+      </div>
+      <p className="mt-1 font-serif text-3xl font-semibold tabular-nums text-ink">{value}</p>
+      {hint && <p className="mt-1 text-[13px] text-muted">{hint}</p>}
+    </>
+  );
+  const base = `block rounded-2xl border border-line bg-white p-5 shadow-card ${className}`;
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={`${base} transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-panel ${focusRing}`}
+      >
+        {body}
+      </Link>
+    );
+  }
+  return <div className={base}>{body}</div>;
+}
+
+/** Small uppercase label above a page title. */
+export function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary-600">
+      {children}
+    </p>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Page headers                                                        */
 /* ------------------------------------------------------------------ */
@@ -808,15 +879,18 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  eyebrow,
 }: {
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  eyebrow?: string;
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
-        <h1 className="font-serif text-2xl font-bold leading-[1.08] tracking-tight text-ink text-balance sm:text-3xl">
+        {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+        <h1 className="font-serif text-2xl font-semibold leading-[1.1] text-ink text-balance sm:text-[2rem]">
           {title}
         </h1>
         {subtitle && (
@@ -865,7 +939,7 @@ export function Th({
   return (
     <th
       scope="col"
-      className={`bg-surface-subtle px-4 py-3 text-left text-xs font-semibold text-secondary first:pl-5 last:pr-5 ${className}`}
+      className={`bg-surface-subtle px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-secondary first:pl-5 last:pr-5 ${className}`}
     >
       {srOnly ? <span className="sr-only">{children}</span> : children}
     </th>
@@ -1048,7 +1122,7 @@ export function ConfirmDialog({
       />
       <div
         ref={dialogRef}
-        className="relative w-full max-w-md rounded-xl border border-line bg-white p-5 shadow-dialog"
+        className="relative w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-dialog"
       >
         <h2
           id="confirm-title"

@@ -236,7 +236,7 @@ export default function HomePage() {
                       )}
                     </div>
                     <Button
-                      variant="danger"
+                      variant="accent"
                       size="lg"
                       onClick={handleSearch}
                       disabled={domains.loading}
@@ -303,7 +303,7 @@ export default function HomePage() {
               </div>
               <Link
                 href="/programs"
-                className="text-xs font-semibold text-danger-solid hover:text-danger-solid-hover"
+                className="text-xs font-semibold text-accent-600 hover:text-accent-700"
               >
                 Explore all programs →
               </Link>
@@ -412,7 +412,7 @@ export default function HomePage() {
               </div>
               <Link
                 href="/domains"
-                className="text-xs font-semibold text-danger-solid hover:text-danger-solid-hover"
+                className="text-xs font-semibold text-accent-600 hover:text-accent-700"
               >
                 Explore all domains →
               </Link>

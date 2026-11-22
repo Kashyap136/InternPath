@@ -61,17 +61,25 @@
   --color-line-input: #b9b1a8;
   --color-line-input-hover: #8c8a87;
 
+  /* Terracotta accent for marketing CTAs (distinct from danger red). */
+  --color-accent-50: #fbf1ec;
+  --color-accent-100: #f5ddd1;
+  --color-accent-500: #c4592f;
+  --color-accent-600: #a9471f;
+  --color-accent-700: #8c3a19;
+
   --color-success-text: #315f50;   /* forest green */
   --color-success-bg: #f0faf6;
-  --color-success-border: #a7f3d0;
+  --color-success-border: #b9d2ca;
 
   --color-warning-text: #92400e;   /* muted gold */
   --color-warning-bg: #fffbeb;
   --color-warning-border: #fde68a;
 
-  --color-danger-text: #d66b4d;   /* terracotta */
-  --color-danger-bg: #fef2f2;
-  --color-danger-border: #fecaca;
+  /* #d66b4d measured ~3:1 on the pale background (fails AA); #b4432a is 5.4:1. */
+  --color-danger-text: #b4432a;   /* deep terracotta */
+  --color-danger-bg: #fdf2ef;
+  --color-danger-border: #f1c6b9;
   --color-danger-solid: #dc2626;
   --color-danger-solid-hover: #b91c1c;
 
@@ -87,8 +95,10 @@
   --color-gold-bg: #fffbeb;
   --color-gold-border: #fde68a;
 
-  --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  --font-family-serif: "Times New Roman", "Liberation Serif", serif;
+  /* Inter (UI) + Fraunces (display), self-hosted by next/font in app/layout.tsx. */
+  --font-sans: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-sans: var(--font-sans);
+  --font-family-serif: var(--font-display), Georgia, "Times New Roman", serif;
 
   --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.05);
   --shadow-panel: 0 6px 16px -6px rgb(15 23 42 / 0.10);
@@ -174,7 +184,18 @@ input[type='number'] {
 @layer utilities {
   .font-serif {
     font-family: var(--font-family-serif);
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
   }
+}
+
+/* Subtle entrance for dashboard cards; collapsed by the reduced-motion rule. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rise-in {
+  animation: rise-in 0.35s ease-out both;
 }
 
 /* Respect users who prefer reduced motion: collapse decorative transitions
