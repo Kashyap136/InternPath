@@ -17,7 +17,6 @@ services:
     # changes are an explicit, owner-approved operator step.
     buildCommand: >-
       npm ci --include=dev --workspace=@internpath/backend --include-workspace-root &&
-      npm run db:generate --workspace=@internpath/backend &&
       npm run build --workspace=@internpath/backend
     startCommand: node backend/dist/server.js
     healthCheckPath: /health

@@ -12,6 +12,8 @@
     "dev:backend": "npm run dev --workspace=@internpath/backend",
     "dev:frontend": "npm run dev --workspace=@internpath/frontend",
     "build": "npm run build --workspace=@internpath/backend && npm run build --workspace=@internpath/frontend",
+    "build:backend": "npm run build --workspace=@internpath/backend",
+    "start": "npm run start --workspace=@internpath/backend",
     "typecheck": "npm run typecheck --workspace=@internpath/backend && npm run typecheck --workspace=@internpath/frontend",
     "lint": "npm run lint --workspace=@internpath/backend && npm run lint --workspace=@internpath/frontend",
     "db:generate": "npm run db:generate --workspace=@internpath/backend",
