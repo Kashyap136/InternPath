@@ -1,4 +1,4 @@
-# InternPath
+# InternPath Project
 
 **Free Project-Based Technical Internship Management Platform**
 
