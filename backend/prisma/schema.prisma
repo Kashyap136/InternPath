@@ -143,6 +143,10 @@ model User {
   privacyAcceptedAt     DateTime?
   mustChangePassword    Boolean      @default(false)
   tempPasswordExpiresAt DateTime?
+  // Email ownership proof (6-digit code sent to the address). Null = not yet
+  // verified; the auth middleware gates unverified accounts when email
+  // verification is enabled (see email-code.service.ts).
+  emailVerifiedAt       DateTime?
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 
@@ -150,6 +154,7 @@ model User {
   studentProfile StudentProfile?
   mentorProfile  MentorProfile?
   sessions       Session[]
+  emailCodes     EmailCode[]
 
   // Sprint 2+ Relations
   assessmentAttempts AssessmentAttempt[]
@@ -213,6 +218,29 @@ model Session {
 
   @@index([userId])
   @@index([token])
+  @@index([expiresAt])
+}
+
+enum EmailCodePurpose {
+  VERIFY_EMAIL
+  PASSWORD_RESET
+}
+
+// Short-lived, single-use 6-digit codes delivered by email. Only an HMAC of
+// the code is stored; attempts are capped so the code cannot be brute-forced.
+model EmailCode {
+  id         String           @id @default(cuid())
+  userId     String
+  purpose    EmailCodePurpose
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int              @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
   @@index([expiresAt])
 }
 

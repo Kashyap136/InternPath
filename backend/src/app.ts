@@ -27,7 +27,10 @@ import assessmentRoutes, {
   questionsAdminRouter,
   levelRulesAdminRouter,
 } from './modules/assessment/assessment.routes';
-import applicationRoutes, { adminApplicationRouter } from './modules/applications/application.routes';
+import applicationRoutes, {
+  adminApplicationRouter,
+  mentorApplicationRouter,
+} from './modules/applications/application.routes';
 import notificationRoutes from './modules/notifications/notification.routes';
 import projectRoutes, { adminRouter as projectAdminRouter } from './modules/projects/project.routes';
 import { internshipRoutes, mentorRouter, internshipAdminRouter } from './modules/internships/internship.routes';
@@ -86,7 +89,8 @@ app.use('/api/applications', applicationRoutes);  // student lifecycle
 app.use('/api/notifications', notificationRoutes); // in-app notification centre (FR-099)
 app.use('/api/projects', projectRoutes);          // repository + authoring (Sprint 3)
 app.use('/api/internships', internshipRoutes);    // student internship surface (Sprint 3/4)
-app.use('/api/mentor', mentorRouter);             // mentor workflows (SRS §18 scope)
+app.use('/api/mentor/applications', mentorApplicationRouter); // mentor application decisions
+app.use('/api/mentor', mentorRouter);          // mentor workflows (SRS §18 scope)
 app.use('/api/certificates', certificateRoutes);  // own certificates (FR-090)
 app.use('/api/reports', reportRoutes);            // report filing (FR-094)
 app.use('/api/resources', resourceRoutes);        // learning resources (FR-101)

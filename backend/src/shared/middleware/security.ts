@@ -89,6 +89,22 @@ export const createAuthRateLimiter = () => {
   });
 };
 
+// Endpoints that SEND email (verification resend, forgot-password). Counted
+// per source address including successful requests, so the platform cannot
+// be used to flood inboxes. Each account additionally has a 60s cooldown.
+export const createEmailSendRateLimiter = () => {
+  return rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: Number(process.env.EMAIL_SEND_RATE_LIMIT_MAX ?? 8),
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      error: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many email requests, please try again later',
+    },
+  });
+};
+
 // Public certificate verification (NFR-CAND-005). A read endpoint used by
 // legitimate employers — a separate, more generous budget than login.
 export const createVerificationRateLimiter = () => {

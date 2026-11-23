@@ -3,8 +3,17 @@
 
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { validateSession, mustChangePassword as checkMustChangePassword } from '../../modules/auth/auth.service';
+import { isUserEmailVerified } from '../../modules/auth/email-code.service';
 import { HttpError } from './errorHandler';
 import type { User, UserRole } from '@prisma/client';
+
+/** Full paths an authenticated-but-unverified account may still call. */
+const EMAIL_UNVERIFIED_ALLOWED = new Set([
+  '/api/auth/me',
+  '/api/auth/verify-email',
+  '/api/auth/verify-email/resend',
+  '/api/auth/change-password',
+]);
 
 // Extend Express Request type
 declare global {
@@ -46,6 +55,12 @@ const authenticate = async (
     const fullRequestPath = `${req.baseUrl}${req.path}`;
     if (checkMustChangePassword(sessionData.user) && fullRequestPath !== '/api/auth/change-password') {
       throw new HttpError(403, 'Password change required', 'PASSWORD_CHANGE_REQUIRED');
+    }
+
+    // Unverified email addresses may only reach the endpoints needed to
+    // verify (and to read their own session / change their password).
+    if (!isUserEmailVerified(sessionData.user) && !EMAIL_UNVERIFIED_ALLOWED.has(fullRequestPath)) {
+      throw new HttpError(403, 'Verify your email address to continue', 'EMAIL_VERIFICATION_REQUIRED');
     }
 
     req.user = sessionData.user;

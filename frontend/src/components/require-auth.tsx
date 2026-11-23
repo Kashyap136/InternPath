@@ -52,6 +52,12 @@ export default function RequireAuth({
     }
     if (user.mustChangePassword) {
       router.replace('/change-password');
+      return;
+    }
+    // Strict `=== false`: an older backend that does not send the field must
+    // not trap every user on the verification screen.
+    if (user.emailVerified === false) {
+      router.replace('/verify-email');
     }
   }, [loading, user, passwordChangeRequired, router]);
 
@@ -86,7 +92,7 @@ export default function RequireAuth({
     );
   }
 
-  if (!user || user.mustChangePassword || passwordChangeRequired) {
+  if (!user || user.mustChangePassword || passwordChangeRequired || user.emailVerified === false) {
     // No loader shown (fast settle): render nothing while the redirect
     // effect above routes the user to the right place.
     return null;

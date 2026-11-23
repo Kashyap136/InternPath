@@ -65,17 +65,21 @@ export const listAllApplications = asyncHandler(async (req: Request, res: Respon
     programId: query.programId,
     page: query.page ? parseInt(query.page) : 1,
     limit: query.limit ? parseInt(query.limit) : 20,
-  });
+  }, req.user!);
   res.json(result);
 });
 
+// Reviewer handlers below serve both /api/admin/applications (ADMIN) and
+// /api/mentor/applications (MENTOR); the service limits mentors to their
+// expertise domains.
 export const getApplication = asyncHandler(async (req: Request, res: Response) => {
-  const application = await applicationService.getById(req.params.id as string);
+  const application = await applicationService.getById(req.params.id as string, req.user!);
   res.json({ data: application });
 });
 
 export const adminDecision = asyncHandler(async (req: Request, res: Response) => {
   const decision = req.body as AdminDecisionInput;
+  await applicationService.assertCanReview(req.user!, req.params.id as string);
   const application = await applicationService.adminDecision(req.params.id as string, req.user!.id, decision);
   // BE-10: admin decisions are audited with actor, action, and reason
   await createAuditLog({
@@ -83,7 +87,12 @@ export const adminDecision = asyncHandler(async (req: Request, res: Response) =>
     action: decision.status === 'APPROVED' ? AuditAction.APPLICATION_APPROVED : AuditAction.APPLICATION_REJECTED,
     entityType: 'Application',
     entityId: application.id,
-    newValue: { id: application.id, status: decision.status, programId: application.programId },
+    newValue: {
+      id: application.id,
+      status: decision.status,
+      programId: application.programId,
+      decidedByRole: req.user!.role,
+    },
     reason: decision.reason ?? undefined,
   });
   res.json({ data: application, message: `Application ${decision.status.toLowerCase()}` });
@@ -91,6 +100,7 @@ export const adminDecision = asyncHandler(async (req: Request, res: Response) =>
 
 // BE-14: review-start transition (SUBMITTED → UNDER_REVIEW)
 export const underReviewApplication = asyncHandler(async (req: Request, res: Response) => {
+  await applicationService.assertCanReview(req.user!, req.params.id as string);
   const application = await applicationService.startUnderReview(req.params.id as string, req.user!.id);
   // BE-10: admin workflow transitions are audited
   await createAuditLog({

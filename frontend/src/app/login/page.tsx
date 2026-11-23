@@ -27,7 +27,7 @@ function LoginForm() {
   const { user, signIn, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const changed = searchParams.get('changed') === '1';
+  const changed = searchParams.get('changed') === '1' || searchParams.get('reset') === '1';
   const expired = searchParams.get('expired') === '1';
   // Google OAuth failures land back on this page with a short, non-sensitive
   // reason (see the backend googleCallback handler). Displayed as a normal
@@ -272,13 +272,18 @@ function LoginForm() {
         </div>
       )}
 
-      {/* Phase 4 (staging remediation 2026-11-21): a logged-out support path.
-          Password recovery is administrator-assisted (secure, audited); the
-          self-serve email flow requires the email provider + token schema
-          documented in the remediation report and is pending owner decisions. */}
+      {/* Self-service recovery: a 6-digit code is emailed to the account
+          address (/forgot-password). Administrators can still reset a
+          password from the admin console. */}
       <p className="mt-4 text-center text-[13px] leading-relaxed text-muted">
-        Trouble signing in? Contact an InternPath administrator — they can
-        securely reset your password from the admin console.
+        Trouble signing in?{' '}
+        <Link
+          href="/forgot-password"
+          className="font-medium text-primary-700 underline-offset-4 hover:text-primary-800 hover:underline"
+        >
+          Reset your password
+        </Link>{' '}
+        with a code sent to your email.
       </p>
 
       <p className="mt-10 border-t border-line pt-6 text-center text-sm text-secondary">

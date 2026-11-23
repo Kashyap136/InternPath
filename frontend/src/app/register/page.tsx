@@ -79,14 +79,15 @@ export default function RegisterPage() {
     setFieldErrors({});
     setSubmitting(true);
     try {
-      await api.post('/api/auth/register', {
+      const res = await api.post<{ user: { emailVerified?: boolean } }>('/api/auth/register', {
         fullName: fullName.trim(),
         email: email.trim(),
         password,
         privacyAccepted,
       });
       await refresh();
-      router.replace('/dashboard');
+      // New accounts confirm their address with the emailed 6-digit code.
+      router.replace(res.user.emailVerified === false ? '/verify-email' : '/dashboard');
     } catch (err) {
       const parsed = parseApiError(err);
       const hasFieldErrors = Object.keys(parsed.fieldErrors).length > 0;

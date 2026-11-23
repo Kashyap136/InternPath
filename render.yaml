@@ -48,3 +48,14 @@ services:
       # (10 failed / 15 min) is unchanged.
       - key: RATE_LIMIT_MAX_REQUESTS
         value: "600"
+      # Email (verification + password-reset codes) is sent through the
+      # Gmail API over HTTPS: Render's free plan blocks outbound SMTP ports
+      # 25/465/587 (since 2025-09), so SMTP is deliberately NOT configured
+      # here. See backend/.env.example ("Gmail API") for obtaining the token.
+      # GOOGLE_CLIENT_ID/SECRET (already set for Google sign-in) are reused.
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      # Must be the same Gmail address that authorised the refresh token,
+      # e.g. "InternPath <internpath.notifications@gmail.com>".
+      - key: EMAIL_FROM
+        sync: false

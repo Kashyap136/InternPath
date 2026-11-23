@@ -5,7 +5,7 @@ import { Router } from 'express';
 import { validate } from '../../shared/middleware/validation';
 import { asyncHandler } from '../../shared/middleware/errorHandler';
 import { authMiddleware, requireRole } from '../../shared/middleware/auth';
-import { createAuthRateLimiter } from '../../shared/middleware/security';
+import { createAuthRateLimiter, createEmailSendRateLimiter } from '../../shared/middleware/security';
 import {
   register,
   login,
@@ -21,8 +21,15 @@ import {
   adminGetUser,
   googleCallback,
   googleOAuthStart,
+  verifyEmail,
+  resendVerificationEmail,
+  forgotPassword,
+  resetPassword,
 } from './auth.controller';
 import {
+  verifyEmailSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   registerSchema,
   loginSchema,
   changePasswordSchema,
@@ -42,6 +49,7 @@ const router: Router = Router();
 // limiter is mounted on the credential-bearing public endpoints. Login keys
 // on source + target account and skips successful sign-ins.
 const authLimiter = createAuthRateLimiter();
+const emailSendLimiter = createEmailSendRateLimiter();
 
 // POST /api/auth/register - Public student registration
 router.post('/register', authLimiter, validate(registerSchema), asyncHandler(register));
@@ -57,6 +65,18 @@ router.post('/change-password', authMiddleware, validate(changePasswordSchema), 
 
 // GET /api/auth/me - Get current user
 router.get('/me', authMiddleware, asyncHandler(getMe));
+
+// POST /api/auth/verify-email - Confirm the emailed verification code
+router.post('/verify-email', authMiddleware, authLimiter, validate(verifyEmailSchema), asyncHandler(verifyEmail));
+
+// POST /api/auth/verify-email/resend - Send a new verification code
+router.post('/verify-email/resend', authMiddleware, emailSendLimiter, asyncHandler(resendVerificationEmail));
+
+// POST /api/auth/forgot-password - Email a reset code (generic response)
+router.post('/forgot-password', emailSendLimiter, validate(forgotPasswordSchema), asyncHandler(forgotPassword));
+
+// POST /api/auth/reset-password - Set a new password with the emailed code
+router.post('/reset-password', authLimiter, validate(resetPasswordSchema), asyncHandler(resetPassword));
 
 // GET /api/auth/providers - Public provider capability discovery (no secrets)
 router.get('/providers', asyncHandler(getAuthProviders));

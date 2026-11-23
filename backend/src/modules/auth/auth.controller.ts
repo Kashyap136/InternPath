@@ -30,6 +30,12 @@ import {
 } from './auth.service';
 import { UserRole } from '@prisma/client';
 import { UserStatus } from '@prisma/client';
+import {
+  consumeEmailCode,
+  isEmailVerificationRequired,
+  isUserEmailVerified,
+  issueEmailCode,
+} from './email-code.service';
 
 // Google OAuth configuration
 // Credentials are owner-supplied via backend/.env (see the setup guide).
@@ -157,6 +163,14 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const { token } = await createSession(user.id);
   setSessionCookie(res, token);
 
+  // Email ownership: send the first verification code straight away. The
+  // account can sign in but every other endpoint is gated until verified.
+  const verificationRequired = isEmailVerificationRequired();
+  let verificationEmailSent = false;
+  if (verificationRequired) {
+    verificationEmailSent = (await issueEmailCode(user, 'VERIFY_EMAIL')).delivered;
+  }
+
   res.status(201).json({
     user: {
       id: user.id,
@@ -164,7 +178,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       fullName: user.fullName,
       role: user.role,
       mustChangePassword: user.mustChangePassword,
+      emailVerified: isUserEmailVerified(user),
     },
+    verificationEmailSent,
     message: 'Registration successful',
   });
 });
@@ -204,6 +220,18 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const { token } = await createSession(user.id);
   setSessionCookie(res, token);
 
+  // Unverified accounts (e.g. mentors/admins created by an administrator)
+  // get a fresh code on sign-in so the verification screen is never empty.
+  // Skipped while a password change is still pending (that comes first).
+  if (!isUserEmailVerified(user) && !mustChangePassword(user)) {
+    try {
+      await issueEmailCode(user, 'VERIFY_EMAIL');
+    } catch (error) {
+      // Cooldown: a code sent under a minute ago is still valid.
+      if (!(error instanceof HttpError && error.statusCode === 429)) throw error;
+    }
+  }
+
   res.json({
     user: {
       id: user.id,
@@ -211,9 +239,122 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       fullName: user.fullName,
       role: user.role,
       mustChangePassword: mustChangePassword(user),
+      emailVerified: isUserEmailVerified(user),
     },
     message: 'Login successful',
   });
+});
+
+// ============================================================
+// Email verification + self-service password reset
+// ============================================================
+
+// POST /api/auth/verify-email - Confirm the emailed 6-digit code
+export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user!;
+  const { code } = req.body as { code: string };
+
+  if (user.emailVerifiedAt) {
+    res.json({ message: 'Email already verified', emailVerified: true });
+    return;
+  }
+
+  await consumeEmailCode(user.id, 'VERIFY_EMAIL', code);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { emailVerifiedAt: new Date() },
+  });
+  await createAuditLog({
+    actorId: user.id,
+    action: AuditAction.USER_EMAIL_VERIFIED,
+    entityType: 'User',
+    entityId: user.id,
+    reason: 'Email verified with emailed code',
+  });
+
+  res.json({ message: 'Email verified', emailVerified: true });
+});
+
+// POST /api/auth/verify-email/resend - Send a fresh verification code
+export const resendVerificationEmail = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user!;
+  if (user.emailVerifiedAt) {
+    res.json({ message: 'Email already verified', emailVerified: true });
+    return;
+  }
+  const { delivered } = await issueEmailCode(user, 'VERIFY_EMAIL');
+  if (!delivered && config.NODE_ENV === 'production') {
+    throw new HttpError(
+      503,
+      'We could not send the email right now. Please try again in a few minutes.',
+      'EMAIL_SEND_FAILED'
+    );
+  }
+  res.json({ message: 'A new code was sent to your email address' });
+});
+
+const FORGOT_PASSWORD_RESPONSE =
+  'If an account exists for that email, a reset code has been sent. It expires in 15 minutes.';
+
+// POST /api/auth/forgot-password - Email a password reset code (no enumeration)
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body as { email: string };
+  const user = await findUserByEmail(email);
+
+  if (user && user.status === UserStatus.ACTIVE) {
+    try {
+      await issueEmailCode(user, 'PASSWORD_RESET');
+    } catch (error) {
+      // A cooldown hit must look identical to every other outcome, otherwise
+      // the response would reveal that the account exists.
+      if (!(error instanceof HttpError && error.statusCode === 429)) throw error;
+    }
+  }
+
+  res.json({ message: FORGOT_PASSWORD_RESPONSE });
+});
+
+// POST /api/auth/reset-password - Set a new password with the emailed code
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { email, code, newPassword } = req.body as {
+    email: string;
+    code: string;
+    newPassword: string;
+  };
+
+  const user = await findUserByEmail(email);
+  if (!user || user.status !== UserStatus.ACTIVE) {
+    throw new HttpError(400, 'That code is invalid or has expired. Request a new code and try again.', 'INVALID_CODE');
+  }
+
+  await assertPasswordPolicy(newPassword);
+  await consumeEmailCode(user.id, 'PASSWORD_RESET', code);
+
+  const passwordHash = await hashPassword(newPassword);
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        mustChangePassword: false,
+        tempPasswordExpiresAt: null,
+        // Receiving the code proves the inbox belongs to this user.
+        emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+      },
+    }),
+    // Sign out every existing session.
+    prisma.session.deleteMany({ where: { userId: user.id } }),
+  ]);
+
+  await createAuditLog({
+    actorId: user.id,
+    action: AuditAction.USER_PASSWORD_RESET_SELF,
+    entityType: 'User',
+    entityId: user.id,
+    reason: 'Password reset with emailed code',
+  });
+
+  res.json({ message: 'Password updated. Sign in with your new password.' });
 });
 
 // POST /api/auth/logout - User logout
@@ -259,6 +400,7 @@ export const getMe = asyncHandler((req: Request, res: Response) => {
       role: user.role,
       status: user.status,
       mustChangePassword: user.mustChangePassword,
+      emailVerified: isUserEmailVerified(user),
       privacyAcceptedAt: user.privacyAcceptedAt,
       createdAt: user.createdAt,
     },
@@ -475,6 +617,8 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
         role: UserRole.STUDENT,
         status: UserStatus.ACTIVE,
         privacyAcceptedAt: new Date(),
+        // Google asserted email_verified above, so the address is proven.
+        emailVerifiedAt: new Date(),
       },
     });
 

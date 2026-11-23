@@ -51,6 +51,7 @@ const navGroups: Record<'STUDENT' | 'MENTOR' | 'ADMIN', NavGroup[]> = {
     {
       label: 'Mentoring',
       links: [
+        { href: '/mentor/applications', label: 'Applications' },
         { href: '/mentor/internships', label: 'Assigned internships' },
         { href: '/mentor/review-queue', label: 'Review queue' },
       ],
@@ -124,6 +125,7 @@ const primaryLinks: Record<'STUDENT' | 'MENTOR' | 'ADMIN', { href: string; label
   ],
   MENTOR: [
     { href: '/dashboard', label: 'Dashboard' },
+    { href: '/mentor/applications', label: 'Applications' },
     { href: '/mentor/review-queue', label: 'Review queue' },
     { href: '/mentor/internships', label: 'Interns' },
     { href: '/mentor/projects', label: 'My projects' },

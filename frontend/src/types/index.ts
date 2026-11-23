@@ -46,6 +46,8 @@ export interface AuthUser {
   role: UserRole;
   status: UserStatus;
   mustChangePassword: boolean;
+  /** False until the emailed 6-digit code is confirmed (when verification is enabled). */
+  emailVerified: boolean;
   privacyAcceptedAt: string | null;
   createdAt: string;
 }
@@ -185,8 +187,24 @@ export interface Application {
   updatedAt: string;
   program?: Program;
   statusHistory?: ApplicationStatusHistoryEntry[];
+  submittedAt?: string | null;
   /** Admin review surfaces include the applicant's account record. */
   user?: { id: string; fullName: string; email: string };
+}
+
+/** GET /api/{admin|mentor}/applications/:id — everything needed to decide. */
+export interface ApplicationReviewDetail extends Omit<Application, 'user' | 'statusHistory'> {
+  user: { id: string; fullName: string; email: string; studentProfile: StudentProfile | null };
+  statusHistory: Array<
+    ApplicationStatusHistoryEntry & { changedByName: string | null; changedByRole: UserRole | null }
+  >;
+  assessment: {
+    id: string;
+    resultLevel: AssessmentResultLevel | null;
+    submittedAt: string | null;
+    skills: Array<{ skillId: string; name: string; score: number }>;
+  } | null;
+  seats: { taken: number; total: number };
 }
 
 export interface AssessmentQuestion {

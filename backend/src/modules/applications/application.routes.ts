@@ -79,5 +79,16 @@ adminRouter.put('/:id/under-review', authMiddleware, requireRole('ADMIN'), valid
 // PUT /api/admin/applications/:id/decision - Approve/reject
 adminRouter.put('/:id/decision', authMiddleware, requireRole('ADMIN'), validate(adminDecisionSchema), asyncHandler(adminDecision));
 
+// Mounted at /api/mentor/applications — mentors review and decide on
+// applications to programs in their expertise domains (scope enforced in the
+// service; out-of-scope ids answer 404). Same decision rules as admins:
+// seat limits, mentor capacity and a mandatory rejection reason.
+const mentorRouter: Router = Router();
+mentorRouter.use(authMiddleware, requireRole('MENTOR'));
+mentorRouter.get('/', validate(listApplicationsQuerySchema), asyncHandler(listAllApplications));
+mentorRouter.get('/:id', validate(applicationIdParamSchema), asyncHandler(getApplication));
+mentorRouter.put('/:id/under-review', validate(applicationIdParamSchema), asyncHandler(underReviewApplication));
+mentorRouter.put('/:id/decision', validate(adminDecisionSchema), asyncHandler(adminDecision));
+
 export default studentRouter;
-export { adminRouter as adminApplicationRouter };
+export { adminRouter as adminApplicationRouter, mentorRouter as mentorApplicationRouter };

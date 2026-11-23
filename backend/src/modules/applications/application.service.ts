@@ -8,8 +8,52 @@ import { notify, notifyAdmins } from '../notifications/notification.service';
 import { isStudentProfileComplete } from '../profiles/profiles.service';
 import type { CreateApplicationInput, AdminDecisionInput, ListApplicationsQuery } from './application.validation';
 import { Prisma } from '@prisma/client';
+import type { UserRole } from '@prisma/client';
+
+/** The signed-in reviewer: administrators see everything; mentors see only
+ * applications to programs in the domains listed on their mentor profile. */
+export interface Reviewer {
+  id: string;
+  role: UserRole;
+}
 
 export class ApplicationService {
+  // ============================================================
+  // Reviewer scope (admin + mentor)
+  // ============================================================
+
+  /** null = unrestricted (admin); otherwise the mentor's domain ids. */
+  private async reviewerDomainIds(reviewer: Reviewer): Promise<string[] | null> {
+    if (reviewer.role === 'ADMIN') return null;
+    if (reviewer.role !== 'MENTOR') return [];
+    const profile = await prisma.mentorProfile.findUnique({
+      where: { userId: reviewer.id },
+      select: { domains: { select: { id: true } } },
+    });
+    return profile?.domains.map((d) => d.id) ?? [];
+  }
+
+  /**
+   * Throws 404 unless the reviewer may act on this application. Mentors are
+   * limited to their expertise domains and never see student drafts; 404
+   * (not 403) avoids disclosing that the application exists.
+   */
+  async assertCanReview(reviewer: Reviewer, applicationId: string): Promise<void> {
+    const domainIds = await this.reviewerDomainIds(reviewer);
+    if (domainIds === null) return;
+    const application = await prisma.application.findUnique({
+      where: { id: applicationId },
+      select: { status: true, program: { select: { domainId: true } } },
+    });
+    if (
+      !application ||
+      application.status === 'DRAFT' ||
+      !domainIds.includes(application.program.domainId)
+    ) {
+      throw new AppError('Application not found', 404, 'APPLICATION_NOT_FOUND');
+    }
+  }
+
   // ============================================================
   // Student Operations
   // ============================================================
@@ -238,7 +282,7 @@ export class ApplicationService {
 
     // BE-07: status update + audit history run in one transaction; a
     // conditional updateMany prevents double-submission races (BE-16).
-    return prisma.$transaction(async (tx) => {
+    const submitted = await prisma.$transaction(async (tx) => {
       const moved = await tx.application.updateMany({
         where: { id: applicationId, status: application.status },
         data: {
@@ -269,6 +313,29 @@ export class ApplicationService {
         },
       });
     });
+
+    // Tell the people who can decide that a new application is waiting.
+    const reviewNotice = {
+      type: 'APPLICATION_SUBMITTED',
+      title: 'New application to review',
+      message: `A student applied to "${submitted.program.title}".`,
+    };
+    const domainMentors = await prisma.user.findMany({
+      where: {
+        role: 'MENTOR',
+        status: 'ACTIVE',
+        mentorProfile: { is: { domains: { some: { id: submitted.program.domainId } } } },
+      },
+      select: { id: true },
+    });
+    await Promise.all([
+      notifyAdmins({ ...reviewNotice, link: `/admin/applications/${submitted.id}` }),
+      ...domainMentors.map((m) =>
+        notify(m.id, { ...reviewNotice, link: `/mentor/applications/${submitted.id}` })
+      ),
+    ]);
+
+    return submitted;
   }
 
   async withdraw(userId: string, applicationId: string, reason: string) {
@@ -537,13 +604,21 @@ export class ApplicationService {
   // Admin Operations
   // ============================================================
 
-  async listAll(query: ListApplicationsQuery) {
+  async listAll(query: ListApplicationsQuery, reviewer: Reviewer) {
     const { status, programId, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Prisma.ApplicationWhereInput = {};
     if (status) where.status = status;
     if (programId) where.programId = programId;
+
+    const domainIds = await this.reviewerDomainIds(reviewer);
+    if (domainIds !== null) {
+      // Mentors: own domains only, and never another student's draft.
+      where.program = { domainId: { in: domainIds } };
+      if (!status) where.status = { not: 'DRAFT' };
+      else if (status === 'DRAFT') where.id = { in: [] };
+    }
 
     const [data, total] = await Promise.all([
       prisma.application.findMany({
@@ -565,7 +640,9 @@ export class ApplicationService {
     };
   }
 
-  async getById(applicationId: string) {
+  async getById(applicationId: string, reviewer: Reviewer) {
+    await this.assertCanReview(reviewer, applicationId);
+
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
       include: {
@@ -579,7 +656,62 @@ export class ApplicationService {
       throw new AppError('Application not found', 404, 'APPLICATION_NOT_FOUND');
     }
 
-    return application;
+    // Decision context for the review screen: the applicant's latest
+    // completed assessment in this program's domain, seat usage, and the
+    // names behind each status change.
+    const [attempt, domainSkills, seatsTaken, actors] = await Promise.all([
+      prisma.assessmentAttempt.findFirst({
+        where: {
+          userId: application.userId,
+          domainId: application.program.domainId,
+          submittedAt: { not: null },
+        },
+        orderBy: { startedAt: 'desc' },
+        select: { id: true, resultLevel: true, perSkillScores: true, submittedAt: true },
+      }),
+      prisma.skill.findMany({
+        where: { domainId: application.program.domainId },
+        select: { id: true, name: true },
+      }),
+      prisma.application.count({
+        where: { programId: application.programId, status: { in: ['APPROVED', 'ACCEPTED'] } },
+      }),
+      prisma.user.findMany({
+        where: {
+          id: {
+            in: application.statusHistory
+              .map((h) => h.changedBy)
+              .filter((id): id is string => Boolean(id)),
+          },
+        },
+        select: { id: true, fullName: true, role: true },
+      }),
+    ]);
+
+    const skillName = new Map(domainSkills.map((s) => [s.id, s.name]));
+    const scores = (attempt?.perSkillScores ?? {}) as Record<string, number>;
+    const actorById = new Map(actors.map((a) => [a.id, a]));
+
+    return {
+      ...application,
+      statusHistory: application.statusHistory.map((h) => {
+        const actor = h.changedBy ? actorById.get(h.changedBy) : undefined;
+        return { ...h, changedByName: actor?.fullName ?? null, changedByRole: actor?.role ?? null };
+      }),
+      assessment: attempt
+        ? {
+            id: attempt.id,
+            resultLevel: attempt.resultLevel,
+            submittedAt: attempt.submittedAt,
+            skills: Object.entries(scores).map(([skillId, score]) => ({
+              skillId,
+              name: skillName.get(skillId) ?? 'Skill',
+              score,
+            })),
+          }
+        : null,
+      seats: { taken: seatsTaken, total: application.program.seats },
+    };
   }
 
   async adminDecision(applicationId: string, adminId: string, data: AdminDecisionInput) {

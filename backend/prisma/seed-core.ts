@@ -238,6 +238,9 @@ export async function createUserIfNotExists(
       status: UserStatus.ACTIVE, // fail-closed default: only ACTIVE demo accounts
       privacyAcceptedAt: new Date(),
       mustChangePassword: spec.mustChangePassword,
+      // Seeded demo addresses (e.g. *.demo) cannot receive mail, so they are
+      // created as already verified.
+      emailVerifiedAt: new Date(),
     },
   });
   logger.log(`  ✅ Created user: ${spec.email} (${spec.role})`);

@@ -36,6 +36,31 @@ export const changePasswordSchema = z.object({
   }),
 });
 
+const emailCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/, 'Enter the 6-digit code from the email');
+
+export const verifyEmailSchema = z.object({
+  body: z.object({
+    code: emailCodeSchema,
+  }),
+});
+
+export const forgotPasswordSchema = z.object({
+  body: z.object({
+    email: z.string().email('Invalid email format').toLowerCase().trim(),
+  }),
+});
+
+export const resetPasswordSchema = z.object({
+  body: z.object({
+    email: z.string().email('Invalid email format').toLowerCase().trim(),
+    code: emailCodeSchema,
+    newPassword: getPasswordSchema(),
+  }),
+});
+
 // Admin reset is performed by email on POST /api/auth/admin/reset-password.
 // (The route has no :id parameter, so no params schema may be required here.)
 export const adminResetPasswordSchema = z.object({
