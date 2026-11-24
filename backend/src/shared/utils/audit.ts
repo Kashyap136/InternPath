@@ -61,6 +61,7 @@ export const AuditAction = {
   USER_PASSWORD_CHANGED: 'USER_PASSWORD_CHANGED',
   USER_PASSWORD_RESET_SELF: 'USER_PASSWORD_RESET_SELF', // emailed-code reset
   USER_EMAIL_VERIFIED: 'USER_EMAIL_VERIFIED',
+  USER_LOGIN_GOOGLE: 'USER_LOGIN_GOOGLE', // existing account, Google-verified email
 
   // Settings actions
   SETTING_CREATED: 'SETTING_CREATED',

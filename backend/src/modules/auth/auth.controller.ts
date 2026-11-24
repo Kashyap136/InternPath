@@ -416,12 +416,16 @@ export const getMe = asyncHandler((req: Request, res: Response) => {
 // - CSRF: single-use, expiring `state` verified before token exchange.
 // - Audience: the ID token MUST be minted for this client (`aud` check).
 // - Issuer: accounts.google.com only.
-// - Email: verified-at-Google addresses only; no unverified auto-linking.
+// - Email: verified-at-Google addresses only (`email_verified` must be the
+//   boolean true or the string "true" — tokeninfo returns strings).
 // - Roles: new accounts are STUDENT, always; an existing account keeps its
 //   role; nothing from the Google profile grants privilege.
-// - Account linkage: FAIL-CLOSED pending owner decision OD-4 — a Google
-//   identity matching an existing account is refused (no auto-link, no
-//   session); only brand-new accounts are created, always as STUDENT.
+// - Account linkage (owner decision OD-4, 2026-11-24): an existing account
+//   whose email matches a Google-VERIFIED address signs in with Google. This
+//   is the same proof of mailbox control the emailed-code password reset
+//   already accepts for every role, so it adds no new takeover path. Every
+//   such sign-in is audit-logged. Pending temporary-password changes are still
+//   enforced by the auth middleware after sign-in.
 // - Disabled accounts: SUSPENDED users are refused (FR-CAND-007).
 // - Open redirects: every redirect target is FRONTEND_URL + a fixed path.
 
@@ -575,30 +579,47 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     }
 
     // Email must be verified at Google (prevents unverified-email linking).
-    if (!idTokenInfo.email_verified || !idTokenInfo.email) {
+    // tokeninfo returns "true"/"false" STRINGS: a truthiness check would let
+    // "false" through, so compare explicitly.
+    const emailVerified =
+      idTokenInfo.email_verified === true || idTokenInfo.email_verified === 'true';
+    if (!emailVerified || !idTokenInfo.email) {
       redirectToLogin('Google account email is not verified');
       return;
     }
 
     const email = idTokenInfo.email;
 
-    // P1-03 fix (comprehensive audit 2026-11-15): FAIL-CLOSED account linking
-    // pending owner decision OD-4. Previously ANY existing account (including
-    // MENTOR and ADMIN) was signed in on a matching verified Google email —
-    // a silent account-takeover path that contradicted this file's own
-    // documentation. Until the owner approves a linking policy, Google
-    // sign-in only creates and accesses NEW student accounts; an existing
-    // account must use its own credentials. This cannot lock out or take over
-    // any existing account, and administrators can never be linked silently.
+    // Existing account: sign in with Google (owner decision OD-4, see the
+    // security notes above). The verified email + aud/iss checks above are the
+    // proof of ownership; the account keeps its role and password.
     const existingUser = await findUserByEmail(email);
 
     if (existingUser) {
-      // One message for every existing-account case (active or suspended):
-      // Google's assertion is not proof of InternPath account ownership, so
-      // no session is issued and no account status is disclosed.
-      redirectToLogin(
-        'An InternPath account already exists for this email. Please sign in with your password.'
-      );
+      if (existingUser.status === UserStatus.SUSPENDED) {
+        redirectToLogin('This account is suspended. Contact an administrator.');
+        return;
+      }
+
+      // Google has just proven the address, so mark it verified if it was not.
+      if (!existingUser.emailVerifiedAt) {
+        await prisma.user.update({
+          where: { id: existingUser.id },
+          data: { emailVerifiedAt: new Date() },
+        });
+      }
+
+      await createAuditLog({
+        actorId: existingUser.id,
+        action: AuditAction.USER_LOGIN_GOOGLE,
+        entityType: 'User',
+        entityId: existingUser.id,
+        reason: 'Signed in to an existing account with a Google-verified email',
+      });
+
+      const { token } = await createSession(existingUser.id);
+      setSessionCookie(res, token);
+      res.redirect(`${config.FRONTEND_URL}/dashboard`);
       return;
     }
 
