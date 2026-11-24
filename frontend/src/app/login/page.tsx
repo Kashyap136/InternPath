@@ -6,20 +6,11 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import type { FieldErrors } from '@/lib/form-errors';
-import { demoNoticeEnabled } from '@/lib/config';
 import AuthShell from '@/components/auth-shell';
-import { ChevronDownIcon, KeyIcon } from '@/components/icons';
 import GoogleAuthButton from '@/components/google-auth-button';
 import { Alert, Button, Field, PasswordInput, Spinner, TextInput } from '@/components/ui';
 
-// Public demo accounts (documented in backend/prisma/seed.ts). These are
-// intentionally public, fictional academic-demo accounts (ASM-CAND-022) so a
-// presenter can sign in to any role during a live demonstration.
-const DEMO_ACCOUNTS = [
-  { role: 'Administrator', email: 'admin@internpath.demo' },
-  { role: 'Mentor', email: 'mentor@internpath.demo' },
-  { role: 'Student', email: 'student@internpath.demo' },
-];
+
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -40,7 +31,6 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [demoOpen, setDemoOpen] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -98,22 +88,6 @@ function LoginForm() {
       setSubmitting(false);
     }
   }
-
-  function fillDemo(account: (typeof DEMO_ACCOUNTS)[number]) {
-    // P1-04 fix (comprehensive audit 2026-11-15): demo passwords are no
-    // longer embedded in frontend source or the compiled bundle. The helper
-    // fills the documented demo EMAIL only; the password comes from the
-    // local, access-controlled presentation runbook
-    // (docs/07-final/InternPath_Phase_13_Examiner_Presentation_Runbook.md)
-    // and is typed by the presenter. Production builds contain no
-    // credentials, and the helper itself renders only when the local
-    // NEXT_PUBLIC_DEMO_NOTICE_ENABLED='true' opt-in is set.
-    setEmail(account.email);
-    setPassword('');
-    setError(null);
-    setFieldErrors({});
-  }
-
   return (
     <div>
       <h1 className="font-serif text-[28px] font-bold leading-[1.1] tracking-[-0.035em] text-ink">
