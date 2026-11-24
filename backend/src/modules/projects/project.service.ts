@@ -459,7 +459,13 @@ export class ProjectService {
       select: { taskId: true, prerequisiteTaskId: true },
     });
 
-    // adjacency: prerequisite → dependents (downstream walk from prerequisite)
+    // adjacency: prerequisite → dependents. The new edge "task needs
+    // prerequisite" closes a cycle exactly when the prerequisite is already
+    // (transitively) a dependent of the task, so walk DOWNSTREAM FROM THE TASK
+    // looking for the prerequisite. (The previous walk started from the
+    // prerequisite and looked for the task, which only detects a redundant
+    // edge and let real cycles such as A→B, B→A through — locking both tasks
+    // for every intern assigned the project.)
     const downstream = new Map<string, string[]>();
     for (const edge of edges) {
       const list = downstream.get(edge.prerequisiteTaskId) ?? [];
@@ -467,11 +473,11 @@ export class ProjectService {
       downstream.set(edge.prerequisiteTaskId, list);
     }
 
-    const stack = [prerequisite.id];
+    const stack = [task.id];
     const visited = new Set<string>();
     while (stack.length > 0) {
       const current = stack.pop()!;
-      if (current === task.id) {
+      if (current === prerequisite.id) {
         throw new AppError(
           'This dependency would create a cycle: the prerequisite already (transitively) depends on this task',
           400,

@@ -620,8 +620,13 @@ export class InternshipService {
   async reviewQueue(mentorId: string) {
     const reviewPeriodDays = await getSetting<number>('reviewPeriodDays');
 
-    const submissions = await prisma.submission.findMany({
+    // Only submissions still awaiting a decision: a version that already has
+    // a review (e.g. v1 after "changes requested") must not reappear beside
+    // its resubmission — previously the queue listed every historical version
+    // of a task that was back in review, duplicating it and inflating counts.
+    const pending = await prisma.submission.findMany({
       where: {
+        review: { is: null },
         internTask: {
           internship: { mentorId },
           status: { in: ['SUBMITTED', 'RESUBMITTED', 'UNDER_REVIEW'] },
@@ -646,6 +651,14 @@ export class InternshipService {
         },
       },
     });
+
+    // One entry per task: keep its latest unreviewed version.
+    const latestByTask = new Map<string, (typeof pending)[number]>();
+    for (const s of pending) {
+      const seen = latestByTask.get(s.internTaskId);
+      if (!seen || s.versionNumber > seen.versionNumber) latestByTask.set(s.internTaskId, s);
+    }
+    const submissions = pending.filter((s) => latestByTask.get(s.internTaskId) === s);
 
     const now = Date.now();
     return {

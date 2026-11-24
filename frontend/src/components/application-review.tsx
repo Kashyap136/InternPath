@@ -403,9 +403,17 @@ export function ApplicationReviewDetailView({
                       <li key={s.skillId}>
                         <div className="mb-1 flex justify-between text-sm">
                           <span className="text-body">{s.name}</span>
-                          <span className="font-medium tabular-nums text-ink">{Math.round(s.score)}%</span>
+                          {/* Per-skill scores are stored on a 0–10 scale
+                              (assessment.service: correct / total × 10) — the
+                              reviewer view previously printed them as a
+                              percentage, so a perfect 10/10 read "10%". */}
+                          <span className="font-medium tabular-nums text-ink">{Math.round(s.score)} / 10</span>
                         </div>
-                        <ProgressBar value={s.score} label={`${s.name} score`} />
+                        <ProgressBar
+                          value={Math.max(0, Math.min(100, s.score * 10))}
+                          label={`${s.name} score`}
+                          valueText={`${Math.round(s.score)} out of 10`}
+                        />
                       </li>
                     ))}
                   </ul>

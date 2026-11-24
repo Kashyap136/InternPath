@@ -154,6 +154,22 @@ export class ApplicationService {
       throw new AppError('Already have an open application for this program', 409, 'APPLICATION_EXISTS');
     }
 
+    // The schema allows ONE application per student per program
+    // (@@unique([userId, programId])), so a closed one (withdrawn, rejected,
+    // declined, expired) also blocks a new one. Say so plainly instead of
+    // letting the insert fail with a raw unique-constraint message.
+    const existingClosed = await prisma.application.findFirst({
+      where: { userId, programId: data.programId },
+      select: { status: true },
+    });
+    if (existingClosed) {
+      throw new AppError(
+        `You have already applied to this program (status: ${existingClosed.status.toLowerCase()}). Each program accepts one application per student.`,
+        409,
+        'APPLICATION_ALREADY_USED'
+      );
+    }
+
     // BR-CAND-004: Check if student already has an active internship
     const activeInternship = await prisma.internship.findFirst({
       where: {
