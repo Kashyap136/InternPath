@@ -219,58 +219,6 @@ function LoginForm() {
            not configured so no control is shown that would fail). */}
       <GoogleAuthButton mode="signin" className="mt-6" />
 
-      {/* Collapsible demo helper — ivory card with colored left edge, only
-           expanded on request, gated by demoNoticeEnabled (ASM-CAND-022). */}
-      {demoNoticeEnabled && (
-        <div className="mt-7">
-          <button
-            type="button"
-            onClick={() => setDemoOpen((v) => !v)}
-            aria-expanded={demoOpen}
-            aria-controls="demo-accounts"
-            className="flex w-full items-center justify-between gap-3 rounded-lg border border-line bg-white p-4 text-left transition-colors hover:border-line-input hover:bg-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-700"
-          >
-            <span className="flex items-center gap-2.5 text-sm font-medium text-body">
-              <KeyIcon className="h-4 w-4 text-primary-700" />
-              Presenting? Use a demo account
-            </span>
-            <ChevronDownIcon
-              className={`h-4 w-4 text-muted transition-transform duration-200 ${
-                demoOpen ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
-
-          {demoOpen && (
-            <div id="demo-accounts" className="mt-4">
-              <p className="px-1 text-xs text-muted">
-                Pick a role to fill its demo email. For security the password is
-                not stored in the application — take it from the local
-                presentation runbook and type it in.
-              </p>
-              <div className="mt-2 divide-y divide-line overflow-hidden rounded-lg border border-line bg-white">
-                {DEMO_ACCOUNTS.map((account) => (
-                  <button
-                    key={account.email}
-                    type="button"
-                    onClick={() => fillDemo(account)}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-700"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-ink">
-                        {account.role}
-                      </span>
-                      <span className="block truncate text-xs text-muted">
-                        {account.email}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Self-service recovery: a 6-digit code is emailed to the account
           address (/forgot-password). Administrators can still reset a
