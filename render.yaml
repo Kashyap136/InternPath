@@ -17,17 +17,10 @@ services:
     buildCommand: >-
       npm ci --include=dev --workspace=@internpath/backend --include-workspace-root &&
       npm run build --workspace=@internpath/backend
-    # Committed Prisma migrations are applied on every start, BEFORE the server
-    # boots, so deployed code never runs against an older schema (that mismatch
-    # broke Google sign-in after the email-verification release). `prisma
-    # migrate deploy` only applies committed, not-yet-applied migrations — it
-    # never resets data. preDeployCommand is unavailable on the free plan, hence
-    # the start command. A migration failure is logged loudly but does not stop
-    # the server from starting, so a bad migration cannot take the API offline.
-    startCommand: >-
-      npx prisma migrate deploy --schema backend/prisma/schema.prisma ||
-      echo "WARNING: prisma migrate deploy FAILED - schema may be out of date";
-      node backend/dist/server.js
+    # Pending Prisma migrations are applied by the server itself on startup
+    # (backend/src/shared/prisma/migrate-on-start.ts, enabled when RENDER=true),
+    # so they run regardless of whether the dashboard follows this file.
+    startCommand: node backend/dist/server.js
     healthCheckPath: /health
     autoDeploy: true
     envVars:

@@ -5,11 +5,16 @@ import { config } from './shared/config';
 import app from './app';
 import { prisma } from './shared/prisma/client';
 import { startScheduler } from './shared/scheduler';
+import { applyPendingMigrations } from './shared/prisma/migrate-on-start';
 
 const PORT = config.PORT;
 
 async function startServer(): Promise<void> {
   try {
+    // Bring the schema up to date before serving (Render only by default).
+    applyPendingMigrations();
+
+
     // Test database connection
     await prisma.$connect();
     console.log('✅ Database connected');
