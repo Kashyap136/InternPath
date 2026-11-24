@@ -1,4 +1,9 @@
 /** @type {import('tailwindcss').Config} */
+//
+// IMPORTANT: every value here must stay byte-identical to the `@theme` block
+// in src/styles/globals.css, which is authoritative under Tailwind v4. This
+// copy exists so tooling that reads the JS config resolves the same tokens.
+// Palette: "Evergreen & Marigold" (2026-11 redesign) — see globals.css.
 module.exports = {
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,128 +13,114 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // InternPath brand palette — Phase 9: forest green / wine / purple / ivory / terracotta
-        // Primary forest green anchors the brand; wine/burgundy for depth; purple for accents.
+        // Evergreen — brand, navigation, primary actions
         primary: {
-          50: '#f0f6f4',
-          100: '#dce9e2',
-          200: '#b9d2ca',
-          300: '#96b9b1',
-          400: '#73a198',
-          500: '#50897f',
-          600: '#315f50',   /* primary forest green */
-          700: '#23483d',   /* deep green */
-          800: '#1d372e',
-          900: '#142622',
-          950: '#0a1714',
+          50: '#eef7f2',
+          100: '#d6ede0',
+          200: '#addac3',
+          300: '#7cc1a0',
+          400: '#4aa27b',
+          500: '#24845f',
+          600: '#156b4c',
+          700: '#0f573e',
+          800: '#0d4633',
+          900: '#0b3729',
+          950: '#062319',
         },
-        // Wine / burgundy family — secondary brand depth
+        // Clay rose (historic slot name `wine`) — supporting categorical tone
         wine: {
-          50: '#f7eef1',
-          100: '#eadfe6',
-          200: '#d5bdcf',
-          300: '#c0a5b7',
-          400: '#aa8da0',
-          500: '#702f45',   /* wine / burgundy */
-          600: '#4d2032',   /* deep wine */
-          700: '#3d1928',
-          800: '#2d131d',
-          900: '#1e0d13',
+          50: '#fbf1f3',
+          100: '#f6dde4',
+          200: '#ecbacb',
+          300: '#dc90aa',
+          400: '#c76688',
+          500: '#a63f63',
+          600: '#86314f',
+          700: '#6b2740',
+          800: '#511e31',
+          900: '#361420',
         },
-        // Muted purple family — accent depth
+        // Indigo (historic slot name `purple`) — supporting tone, info states
         purple: {
-          50: '#f2f0f5',
-          100: '#e7e3ec',
-          200: '#cfc6dd',
-          300: '#b7a9cf',
-          400: '#9f8cc2',
-          500: '#76618f',   /* muted purple */
-          600: '#514365',   /* deep purple */
-          700: '#403451',
-          800: '#30263d',
-          900: '#1e0d13',
+          50: '#f1f3fb',
+          100: '#e1e6f7',
+          200: '#c3cced',
+          300: '#9daddf',
+          400: '#7386cc',
+          500: '#5264b4',
+          600: '#404f95',
+          700: '#334077',
+          800: '#28315a',
+          900: '#1b213d',
         },
-        // Semantic tokens for surfaces, text and status. Kept flat so class
-        // names read as `bg-success-bg`, `text-danger-text`, `bg-canvas` etc.
-        canvas: '#f7f4ee',        /* warm off-white page background */
-        surface: '#fffefa',       /* warm white surface */
-        'surface-subtle': '#faf8f5',
-
-        ink: '#292c2a',           /* primary text */
-        body: '#3a3d39',          /* body text */
-        // IMPORTANT: these three values must stay byte-identical to the
-        // `@theme` block in src/styles/globals.css (which overrides this
-        // file under Tailwind v4). The 2026-11 contrast audit raised
-        // secondary/muted to AA-safe greys; keeping the JS copy in sync
-        // prevents a silent regression if resolution order ever changes.
-        secondary: '#6b6a66',     /* secondary text (AA on canvas) */
-        muted: '#6f6e69',         /* muted text (AA on canvas) */
-
-        line: '#e6e0d7',          /* borders */
-        'line-input': '#b9b1a8',
-        'line-input-hover': '#8c8a87',
-
-        // Terracotta accent for marketing CTAs (owner reference: "terracotta
-        // primary actions"). Distinct from danger red so CTAs never read as errors.
+        // Marigold — warmth, highlights, marketing CTAs
         accent: {
-          50: '#fbf1ec',
-          100: '#f5ddd1',
-          500: '#c4592f',
-          600: '#a9471f',   /* AA on white for text and white-on-fill */
-          700: '#8c3a19',
+          50: '#fff8eb',
+          100: '#feedc9',
+          200: '#fcd98f',
+          300: '#f9c25a',
+          400: '#f5aa2f',
+          500: '#e38c12',
+          600: '#b4600c',
+          700: '#8f4a0e',
+          800: '#733c11',
         },
 
-        'success-text': '#315f50',   /* forest green */
-        'success-bg': '#f0faf6',
-        'success-border': '#b9d2ca',
+        canvas: '#f6f5f0',
+        surface: '#ffffff',
+        'surface-subtle': '#f9f8f4',
+        'surface-sunken': '#f1f0ea',
 
-        'warning-text': '#92400e',   /* muted gold */
-        'warning-bg': '#fffbeb',
-        'warning-border': '#fde68a',
+        ink: '#13201a',
+        body: '#2d3a33',
+        secondary: '#56625b',
+        muted: '#646e68',
 
-        'danger-text': '#b4432a',   /* deep terracotta — 5.4:1 on danger-bg (AA) */
-        'danger-bg': '#fdf2ef',
-        'danger-border': '#f1c6b9',
-        'danger-solid': '#dc2626',
-        'danger-solid-hover': '#b91c1c',
+        line: '#e4e2d9',
+        'line-strong': '#d6d3c7',
+        'line-input': '#c8c5b8',
+        'line-input-hover': '#9a988d',
 
-        'info-text': '#514365',    /* deep purple */
-        'info-bg': '#f2f0f5',
-        'info-border': '#d5bdcf',
+        'success-text': '#11643f',
+        'success-bg': '#edf8f1',
+        'success-border': '#bde3cc',
 
-        'neutral-text': '#3a3d39',
-        'neutral-bg': '#f3f4f6',
-        'neutral-border': '#e5e7eb',
+        'warning-text': '#8a4a07',
+        'warning-bg': '#fff7e8',
+        'warning-border': '#f6d9a2',
 
-        'gold-text': '#92400e',      /* muted gold */
-        'gold-bg': '#fffbeb',
-        'gold-border': '#fde68a',
+        'danger-text': '#b3261e',
+        'danger-bg': '#fef3f2',
+        'danger-border': '#f7cbc6',
+        'danger-solid': '#d0362b',
+        'danger-solid-hover': '#b3261e',
+
+        'info-text': '#3d4b8f',
+        'info-bg': '#f1f3fb',
+        'info-border': '#cdd5f0',
+
+        'neutral-text': '#3a4540',
+        'neutral-bg': '#f1f1ec',
+        'neutral-border': '#e1e0d7',
+
+        'gold-text': '#8a4a07',
+        'gold-bg': '#fff7e8',
+        'gold-border': '#f6d9a2',
       },
       fontFamily: {
         // Self-hosted via next/font (see app/layout.tsx); system stack as fallback.
-        sans: [
-          'var(--font-inter)',
-          'system-ui',
-          '-apple-system',
-          'BlinkMacSystemFont',
-          '"Segoe UI"',
-          'Roboto',
-          '"Helvetica Neue"',
-          'Arial',
-          '"Noto Sans"',
-          'sans-serif',
-        ],
+        sans: ['var(--font-body)', 'ui-sans-serif', 'system-ui', '-apple-system', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        serif: ['var(--font-display)', 'var(--font-body)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        accent: ['var(--font-accent)', 'Georgia', '"Times New Roman"', 'serif'],
       },
       boxShadow: {
-        // Softer, deliberate elevation for cards…
-        card: '0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.05)',
-        // …for raised panels and popovers…
-        panel: '0 6px 16px -6px rgb(15 23 42 / 0.10)',
-        // …and a grounded drop for dialogs.
-        dialog: '0 20px 50px -12px rgb(13 26 48 / 0.35)',
+        xs: '0 1px 2px 0 rgb(19 32 26 / 0.06)',
+        card: '0 1px 2px 0 rgb(19 32 26 / 0.04), 0 2px 6px -2px rgb(19 32 26 / 0.05)',
+        panel: '0 1px 2px 0 rgb(19 32 26 / 0.04), 0 12px 28px -10px rgb(19 32 26 / 0.16)',
+        dialog: '0 2px 6px 0 rgb(6 35 25 / 0.06), 0 32px 64px -16px rgb(6 35 25 / 0.34)',
+        glow: '0 0 0 1px rgb(15 87 62 / 0.08), 0 8px 24px -8px rgb(15 87 62 / 0.35)',
       },
       maxWidth: {
-        // Reading-friendly content measure for forms and prose.
         prose: '65ch',
       },
     },

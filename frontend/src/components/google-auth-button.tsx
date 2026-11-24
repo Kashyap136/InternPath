@@ -60,7 +60,7 @@ export function GoogleAuthDivider({ label = 'or' }: { label?: string }) {
   return (
     <div aria-hidden="true" className="flex items-center gap-4">
       <span className="h-px flex-1 bg-line" />
-      <span className="text-xs font-medium uppercase tracking-wide text-muted">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
         {label}
       </span>
       <span className="h-px flex-1 bg-line" />
@@ -94,7 +94,10 @@ export default function GoogleAuthButton({
     };
   }, []);
 
-  const buttonClasses = `inline-flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-line-input bg-white text-[15px] font-medium text-ink transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`;
+  // `className` positions the whole section (wrapper below) — it must not be
+  // repeated on the button, which previously doubled its top margin.
+  const buttonClasses =
+    'inline-flex h-11 w-full items-center justify-center gap-3 rounded-[10px] border border-line-strong bg-white text-[14.5px] font-semibold text-ink shadow-xs transition-[background-color,border-color,box-shadow] hover:border-line-input-hover hover:bg-surface-subtle hover:shadow-card focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
   const label = mode === 'signup' ? 'Sign up with Google' : 'Continue with Google';
 

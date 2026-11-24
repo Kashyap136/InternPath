@@ -12,7 +12,7 @@ import Image from 'next/image';
 import { CheckCircleIcon, XCircleIcon } from '@/components/icons';
 
 const focusRing =
-  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
 /* ------------------------------------------------------------------ */
 /* Buttons                                                             */
@@ -21,22 +21,29 @@ const focusRing =
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'wine' | 'accent';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
+// Solid buttons carry a 1px top highlight and a tight drop shadow so they
+// read as pressable objects rather than flat rectangles.
 const buttonBase =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-150 motion-safe:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+  'inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-semibold tracking-[-0.005em] transition-[color,background-color,border-color,box-shadow,transform] duration-150 motion-safe:active:translate-y-px disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+
+const solidShadow = 'shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_1px_2px_rgb(6_35_25/0.22)]';
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary: 'bg-primary-700 text-white hover:bg-primary-800 active:bg-primary-900 shadow-xs',
-  accent: 'bg-accent-600 text-white hover:bg-accent-700 active:bg-accent-700 shadow-xs',
-  wine: 'bg-wine-600 text-white hover:bg-wine-700 active:bg-wine-800 shadow-xs',
-  danger: 'bg-danger-solid text-white hover:bg-danger-solid-hover active:bg-danger-solid-hover shadow-xs',
-  secondary: 'border border-line-input bg-white text-ink hover:border-line-input-hover hover:bg-surface-subtle',
-  ghost: 'text-secondary hover:bg-surface-subtle hover:text-ink',
+  primary: `bg-primary-700 text-white hover:bg-primary-800 active:bg-primary-900 ${solidShadow}`,
+  // Marigold CTA with ink text (8.5:1) — the warm counterpoint to evergreen.
+  accent:
+    'bg-accent-400 text-ink hover:bg-accent-300 active:bg-accent-400 shadow-[inset_0_1px_0_rgb(255_255_255/0.4),0_1px_2px_rgb(115_60_17/0.25)]',
+  wine: `bg-wine-600 text-white hover:bg-wine-700 active:bg-wine-800 ${solidShadow}`,
+  danger: `bg-danger-solid text-white hover:bg-danger-solid-hover active:bg-danger-solid-hover ${solidShadow}`,
+  secondary:
+    'border border-line-strong bg-white text-ink shadow-xs hover:border-line-input-hover hover:bg-surface-subtle',
+  ghost: 'text-secondary hover:bg-ink/[0.045] hover:text-ink',
 };
 
 const buttonSizes: Record<ButtonSize, string> = {
-  sm: 'h-8 gap-1.5 px-3 text-[13px]',
-  md: 'h-10 gap-2 px-4 text-sm',
-  lg: 'h-11 gap-2 px-5 text-sm',
+  sm: 'h-8 gap-1.5 rounded-lg px-3 text-[13px]',
+  md: 'h-10 gap-2 rounded-[10px] px-4 text-sm',
+  lg: 'h-12 gap-2 rounded-xl px-5 text-[15px]',
 };
 
 // React 19 + Next 15 typing note: `React.ComponentProps<typeof Link>` collapses
@@ -182,10 +189,17 @@ export function Avatar({
   name: string;
   className?: string;
 }) {
+  // Caller-supplied size / type / ring classes replace the defaults instead of
+  // competing with them (two `h-*` utilities resolve by stylesheet order, not
+  // by class order, so "overriding" via className is unreliable).
+  const has = (re: RegExp) => re.test(className);
+  const size = has(/(^|\s)h-/) ? '' : 'h-8 w-8';
+  const text = has(/(^|\s)text-(xs|sm|base|lg|\[)/) ? '' : 'text-xs';
+  const ring = has(/(^|\s)ring-(white|primary|ink|accent)/) ? 'ring-2' : 'ring-2 ring-white';
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-700 text-xs font-semibold tracking-wide text-white ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary-600 to-primary-900 font-semibold tracking-wide text-white ${size} ${text} ${ring} ${className}`}
     >
       {initialsOf(name)}
     </span>
@@ -201,28 +215,37 @@ export function Avatar({
 export function Wordmark({
   href = '/',
   className = '',
+  tone = 'dark',
 }: {
   href?: string;
   className?: string;
+  /** `light` renders the name in white for dark (evergreen) surfaces. */
+  tone?: 'dark' | 'light';
 }) {
   return (
     <Link
       href={href}
-      className={`inline-flex items-center gap-2.5 rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ${className}`}
+      className={`group inline-flex items-center gap-2.5 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ${className}`}
     >
       {/* Owner-supplied brand mark (frontend/public/brand/, byte-preserved
           derivative of logo-original.png). Rendered at 32px from the 64px
           asset for crisp rendering on high-DPI displays. Decorative: the
           adjacent product name carries the accessible identity. */}
-      <Image
-        src="/brand/logo-mark-64.png"
-        alt=""
-        aria-hidden="true"
-        width={32}
-        height={32}
-        className="h-8 w-8 shrink-0"
-      />
-      <span className="text-lg font-bold tracking-tight text-ink">
+      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white shadow-xs ring-1 ring-ink/[0.06] transition-transform duration-200 group-hover:-rotate-3">
+        <Image
+          src="/brand/logo-mark-64.png"
+          alt=""
+          aria-hidden="true"
+          width={28}
+          height={28}
+          className="h-7 w-7"
+        />
+      </span>
+      <span
+        className={`font-serif text-[19px] font-bold tracking-[-0.03em] ${
+          tone === 'light' ? 'text-white' : 'text-ink'
+        }`}
+      >
         InternPath
       </span>
     </Link>
@@ -234,12 +257,15 @@ export function Wordmark({
 /* ------------------------------------------------------------------ */
 
 const inputBase =
-  'block w-full rounded-lg border bg-white text-sm text-ink placeholder:text-muted disabled:cursor-not-allowed disabled:bg-surface-subtle disabled:text-muted transition-colors';
+  'block w-full rounded-[10px] border bg-white text-sm text-ink shadow-xs placeholder:text-muted disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-muted read-only:bg-surface-subtle transition-[border-color,box-shadow,background-color] duration-150';
+
+// Inputs use a soft 4px halo on focus (Figma-style) instead of an offset ring.
+const inputFocus = 'focus-visible:outline-hidden focus-visible:ring-4';
 
 const inputState = (invalid?: boolean) =>
   invalid
-    ? 'border-danger-solid focus-visible:border-danger-solid focus-visible:ring-danger-solid'
-    : 'border-line-input hover:border-line-input-hover focus-visible:border-primary-700';
+    ? 'border-danger-solid focus-visible:border-danger-solid focus-visible:ring-danger-solid/15'
+    : 'border-line-input hover:border-line-input-hover focus-visible:border-primary-600 focus-visible:ring-primary-500/15';
 
 /**
  * Field wires its label, hint and error to the child control:
@@ -277,9 +303,9 @@ export function Field({
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-body">
+      <label htmlFor={htmlFor} className="block text-[13px] font-semibold text-ink">
         {label}
-        {optional && <span className="ml-1 font-normal text-muted">(optional)</span>}
+        {optional && <span className="ml-1.5 font-normal text-muted">Optional</span>}
       </label>
       {child}
       {(hint || counter) && (
@@ -311,7 +337,7 @@ export function TextInput({
 }: React.InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
   return (
     <input
-      className={`${inputBase} ${inputState(invalid)} h-10 px-3.5 ${focusRing} ${className}`}
+      className={`${inputBase} ${inputState(invalid)} h-11 px-3.5 ${inputFocus} ${className}`}
       {...props}
     />
   );
@@ -330,7 +356,7 @@ export function TextArea({
   return (
     <div>
       <textarea
-        className={`${inputBase} ${inputState(invalid)} px-3.5 py-2.5 leading-relaxed ${focusRing} ${className}`}
+        className={`${inputBase} ${inputState(invalid)} px-3.5 py-3 leading-relaxed ${inputFocus} ${className}`}
         value={value}
         maxLength={maxLength}
         {...props}
@@ -359,8 +385,8 @@ export function Select({
   return (
     <div className="relative">
       <select
-        className={`${inputBase} ${inputState(invalid)} appearance-none pr-9 ${focusRing} ${
-          size === 'sm' ? 'h-8 pl-3 text-[13px]' : 'h-10 pl-3.5'
+        className={`${inputBase} ${inputState(invalid)} cursor-pointer appearance-none pr-9 ${inputFocus} ${
+          size === 'sm' ? 'h-8 rounded-lg pl-3 text-[13px]' : 'h-11 pl-3.5'
         } ${className}`}
         {...props}
       >
@@ -398,14 +424,14 @@ export function Checkbox({
     <input
       type="checkbox"
       id={id}
-      className={`h-4 w-4 shrink-0 rounded border-line-input text-primary-700 accent-primary-700 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ${className}`}
+      className={`h-4 w-4 shrink-0 cursor-pointer rounded border-line-input text-primary-700 accent-primary-700 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ${className}`}
       {...props}
     />
   );
   if (label === undefined) return input;
   return (
-    <label htmlFor={id} className="flex items-start gap-3 text-sm text-body">
-      {input}
+    <label htmlFor={id} className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-body">
+      <span className="flex h-[1.625em] shrink-0 items-center">{input}</span>
       <span>{label}</span>
     </label>
   );
@@ -444,7 +470,7 @@ export function PasswordInput({
     <div className="relative">
       <input
         type={showPassword ? 'text' : 'password'}
-        className={`${inputBase} ${inputState(invalid)} h-10 px-3.5 pr-12 ${focusRing} ${className}`}
+        className={`${inputBase} ${inputState(invalid)} h-11 px-3.5 pr-12 ${inputFocus} ${className}`}
         value={value}
         onChange={onChange}
         onBlur={onBlur}
@@ -463,7 +489,7 @@ export function PasswordInput({
           }
         }}
         aria-label={showPassword ? 'Hide password' : 'Show password'}
-        className="absolute top-1/2 right-1.5 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted transition-colors duration-200 ease-in-out hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 motion-safe:active:scale-90"
+        className="absolute top-1/2 right-1.5 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted transition-colors duration-200 ease-in-out hover:bg-ink/[0.045] hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 motion-safe:active:scale-90"
       >
         {showPassword ? (
           <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
@@ -553,9 +579,11 @@ export function Alert({
   return (
     <div
       role={variant === 'error' ? 'alert' : 'status'}
-      className={`flex items-start gap-2.5 rounded-lg border px-4 py-3 text-sm ${alertStyles[variant]}`}
+      className={`fade-in flex items-start gap-3 rounded-xl border px-4 py-3.5 text-sm leading-relaxed ${alertStyles[variant]}`}
     >
-      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <span className="mt-px inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-current/10">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
       <div className="min-w-0 flex-1">
         {title && <p className="font-semibold text-current">{title}</p>}
         {children && <div className="mt-0.5 text-current/90">{children}</div>}
@@ -609,7 +637,7 @@ export function StatusBadge({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium ${badgeStyles[tone]} ${className}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-[3px] text-xs font-semibold leading-none ${badgeStyles[tone]} ${className}`}
     >
       {dot && (
         <span
@@ -648,16 +676,17 @@ export function EmptyState({
     <div
       className={`flex flex-col ${
         bordered
-          ? 'items-center rounded-xl border border-dashed border-line bg-white px-6 py-12 text-center'
-          : 'items-start'
+          ? 'items-center rounded-2xl border border-dashed border-line-strong bg-white/70 px-6 py-14 text-center'
+          : 'items-start py-2'
       } ${className}`}
     >
       {Icon && (
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary-50 text-primary-700">
+        <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-b from-primary-50 to-primary-100 text-primary-700 shadow-xs ring-1 ring-primary-200/70">
           <Icon className="h-5 w-5" />
+          <span aria-hidden="true" className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-accent-400 ring-2 ring-white" />
         </span>
       )}
-      <p className={`text-sm font-semibold text-ink ${Icon ? 'mt-3' : ''}`}>
+      <p className={`font-serif text-base font-semibold text-ink ${Icon ? 'mt-4' : ''}`}>
         {title}
       </p>
       {description && (
@@ -685,21 +714,47 @@ export function LoadingState({
         role="status"
         className={`flex min-h-screen flex-col items-center justify-center gap-3 bg-canvas ${className}`}
       >
-        <Spinner className="h-6 w-6 text-primary-700" />
-        <p className="text-sm text-muted">{label}</p>
+        <LoaderOrb />
+        <p className="text-sm font-medium text-secondary">{label}</p>
       </div>
     );
   }
 
+  // Region loader: a skeleton of the content shape plus the live label, so
+  // the layout does not jump when data arrives.
   return (
-    <div
-      role="status"
-      className={`flex min-h-[160px] flex-col items-center justify-center gap-3 ${className}`}
-    >
-      <Spinner className="h-5 w-5 text-primary-700" />
-      <p className="text-sm text-muted">{label}</p>
+    <div role="status" className={`min-h-[160px] w-full py-2 ${className}`}>
+      <div aria-hidden="true" className="space-y-3">
+        <div className="skeleton h-4 w-2/5 rounded-md" />
+        <div className="skeleton h-3 w-4/5 rounded-md" />
+        <div className="skeleton h-3 w-3/5 rounded-md" />
+        <div className="grid grid-cols-3 gap-3 pt-2">
+          <div className="skeleton h-14 rounded-xl" />
+          <div className="skeleton h-14 rounded-xl" />
+          <div className="skeleton h-14 rounded-xl" />
+        </div>
+      </div>
+      <p className="mt-4 flex items-center gap-2 text-[13px] font-medium text-muted">
+        <Spinner className="h-3.5 w-3.5 text-primary-600" ariaHidden />
+        {label}
+      </p>
     </div>
   );
+}
+
+/** Branded loading mark: evergreen orb with a marigold orbit. */
+function LoaderOrb() {
+  return (
+    <span aria-hidden="true" className="relative inline-flex h-10 w-10 items-center justify-center">
+      <span className="absolute inset-0 animate-spin rounded-full border-2 border-primary-100 border-t-primary-600" />
+      <span className="h-2.5 w-2.5 rounded-full bg-accent-400" />
+    </span>
+  );
+}
+
+/** Shimmering placeholder block for custom skeleton layouts. */
+export function Skeleton({ className = '' }: { className?: string }) {
+  return <div aria-hidden="true" className={`skeleton rounded-md ${className}`} />;
 }
 
 export function ErrorState({
@@ -747,11 +802,11 @@ export function ProgressBar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuetext={valueText}
-      className={`h-2 w-full overflow-hidden rounded-full bg-line ${className}`}
+      className={`h-2 w-full overflow-hidden rounded-full bg-surface-sunken ring-1 ring-inset ring-ink/5 ${className}`}
     >
       <div
-        className={`h-full rounded-full transition-[width] duration-300 ${
-          clamp >= 100 ? 'bg-success-text' : 'bg-primary-700'
+        className={`h-full rounded-full bg-linear-to-r transition-[width] duration-500 ease-out ${
+          clamp >= 100 ? 'from-primary-500 to-success-text' : 'from-primary-400 to-primary-700'
         }`}
         style={{ width: `${clamp}%` }}
       />
@@ -785,10 +840,10 @@ export function Panel({
       className={`rounded-2xl border border-line bg-white shadow-card ${className}`}
     >
       {(title || actions) && (
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3.5">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
           <div className="min-w-0">
             {title && (
-              <h2 id={titleId} className="text-[15px] font-semibold tracking-tight text-ink">
+              <h2 id={titleId} className="font-serif text-base font-semibold tracking-[-0.02em] text-ink">
                 {title}
               </h2>
             )}
@@ -829,31 +884,56 @@ export function StatCard({
   className?: string;
 }) {
   const toneChip: Record<string, string> = {
-    primary: 'bg-primary-50 text-primary-700',
-    accent: 'bg-accent-50 text-accent-700',
-    wine: 'bg-wine-50 text-wine-600',
-    purple: 'bg-purple-50 text-purple-600',
+    primary: 'bg-primary-50 text-primary-700 ring-primary-100',
+    accent: 'bg-accent-50 text-accent-700 ring-accent-100',
+    wine: 'bg-wine-50 text-wine-600 ring-wine-100',
+    purple: 'bg-purple-50 text-purple-600 ring-purple-100',
+  };
+  // A soft tinted glow in the top-right corner gives each card its own tone.
+  const toneGlow: Record<string, string> = {
+    primary: 'from-primary-100/70',
+    accent: 'from-accent-100/80',
+    wine: 'from-wine-100/70',
+    purple: 'from-purple-100/70',
   };
   const body = (
     <>
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-[13px] font-medium text-secondary">{label}</p>
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-radial ${toneGlow[tone]} to-transparent to-70%`}
+      />
+      <div className="relative flex items-start justify-between gap-3">
+        <p className="text-[13px] font-semibold text-secondary">{label}</p>
         {Icon && (
-          <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneChip[tone]}`}>
-            <Icon className="h-4 w-4" />
+          <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset ${toneChip[tone]}`}>
+            <Icon className="h-[18px] w-[18px]" />
           </span>
         )}
       </div>
-      <p className="mt-1 font-serif text-3xl font-semibold tabular-nums text-ink">{value}</p>
-      {hint && <p className="mt-1 text-[13px] text-muted">{hint}</p>}
+      <p className="relative mt-2 font-serif text-[2rem] font-bold leading-none tracking-[-0.03em] tabular-nums text-ink">
+        {value}
+      </p>
+      {hint && (
+        <p className="relative mt-2 flex items-center gap-1 text-[13px] text-muted">
+          {hint}
+          {href && (
+            <span
+              aria-hidden="true"
+              className="ml-auto translate-x-[-4px] text-primary-700 opacity-0 transition-[opacity,transform] duration-200 group-hover:translate-x-0 group-hover:opacity-100"
+            >
+              →
+            </span>
+          )}
+        </p>
+      )}
     </>
   );
-  const base = `block rounded-2xl border border-line bg-white p-5 shadow-card ${className}`;
+  const base = `group relative block overflow-hidden rounded-2xl border border-line bg-white p-5 shadow-card ${className}`;
   if (href) {
     return (
       <Link
         href={href}
-        className={`${base} transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-panel ${focusRing}`}
+        className={`${base} transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-panel ${focusRing}`}
       >
         {body}
       </Link>
@@ -865,7 +945,8 @@ export function StatCard({
 /** Small uppercase label above a page title. */
 export function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary-600">
+    <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary-100 bg-primary-50/80 py-1 pl-2 pr-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-primary-700">
+      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent-500" />
       {children}
     </p>
   );
@@ -887,20 +968,20 @@ export function PageHeader({
   eyebrow?: string;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+    <div className="rise-in flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
       <div className="min-w-0">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h1 className="font-serif text-2xl font-semibold leading-[1.1] text-ink text-balance sm:text-[2rem]">
+        <h1 className="font-serif text-[1.75rem] font-bold leading-[1.08] tracking-[-0.035em] text-ink text-balance sm:text-[2.25rem]">
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-secondary text-pretty">
+          <p className="mt-2 max-w-prose text-[15px] leading-relaxed text-secondary text-pretty">
             {subtitle}
           </p>
         )}
       </div>
       {actions && (
-        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
       )}
     </div>
   );
@@ -939,7 +1020,7 @@ export function Th({
   return (
     <th
       scope="col"
-      className={`bg-surface-subtle px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-secondary first:pl-5 last:pr-5 ${className}`}
+      className={`border-b border-line bg-surface-subtle px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-muted first:pl-5 last:pr-5 ${className}`}
     >
       {srOnly ? <span className="sr-only">{children}</span> : children}
     </th>
@@ -954,7 +1035,7 @@ export function Td({
   className?: string;
 }) {
   return (
-    <td className={`px-4 py-3 align-middle first:pl-5 last:pr-5 ${className}`}>
+    <td className={`px-4 py-3.5 align-middle first:pl-5 last:pr-5 ${className}`}>
       {children}
     </td>
   );
@@ -979,8 +1060,8 @@ export function Pagination({
 }) {
   if (totalPages <= 1) return null;
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-4">
-      <p className="text-[13px] text-muted tabular-nums">
+    <div className="flex items-center justify-between gap-3 border-t border-line bg-surface-subtle/60 px-5 py-3.5">
+      <p className="text-[13px] font-medium text-muted tabular-nums">
         Page {page} of {totalPages}
         {typeof total === 'number' ? ` · ${total} ${noun}` : ''}
       </p>
@@ -1116,17 +1197,23 @@ export function ConfirmDialog({
       aria-describedby={description ? 'confirm-description' : undefined}
     >
       <div
-        className="absolute inset-0 bg-primary-950/40"
+        className="fade-in absolute inset-0 bg-primary-950/45 backdrop-blur-[3px]"
         onClick={onCancel}
         aria-hidden="true"
       />
       <div
         ref={dialogRef}
-        className="relative w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-dialog"
+        className="rise-in relative max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-white p-6 shadow-dialog sm:p-7"
       >
+        <span
+          aria-hidden="true"
+          className={`mb-4 block h-1 w-10 rounded-full ${
+            confirmVariant === 'danger' ? 'bg-danger-solid' : 'bg-accent-400'
+          }`}
+        />
         <h2
           id="confirm-title"
-          className="text-base font-semibold tracking-tight text-ink"
+          className="font-serif text-lg font-semibold tracking-[-0.02em] text-ink"
         >
           {title}
         </h2>

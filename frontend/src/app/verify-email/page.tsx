@@ -99,10 +99,10 @@ export default function VerifyEmailPage() {
       panelBody="We confirm every email address so certificates, offers and password resets always reach the right person."
     >
       <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-ink">
+        <h1 className="font-serif text-[28px] font-bold leading-[1.1] tracking-[-0.035em] text-ink">
           Verify your email
         </h1>
-        <p className="mt-5 max-w-[34rem] text-base leading-7 text-body text-pretty">
+        <p className="mt-2.5 text-[14.5px] leading-relaxed text-secondary text-pretty">
           We sent a 6-digit code to{' '}
           <span className="font-semibold text-ink">{user.email}</span>. Enter it
           below to finish setting up your account. The code expires in 15
@@ -110,17 +110,17 @@ export default function VerifyEmailPage() {
         </p>
 
         {notice && (
-          <div className="mt-8">
+          <div className="mt-6">
             <Alert variant="success" title="Code sent">{notice}</Alert>
           </div>
         )}
         {error && (
-          <div className="mt-8">
+          <div className="mt-6">
             <Alert variant="error" title="Not verified">{error}</Alert>
           </div>
         )}
 
-        <form onSubmit={(e) => void handleVerify(e)} className="mt-9 space-y-5" noValidate>
+        <form onSubmit={(e) => void handleVerify(e)} className="mt-7 space-y-5" noValidate>
           <Field label="Verification code" htmlFor="code" error={fieldError ?? undefined}>
             <TextInput
               id="code"

@@ -129,7 +129,7 @@ export default function ProgramDetailPage() {
       </div>
 
       {/* Program header — serif headline, status + domain pills. */}
-      <section className="rounded-xl border border-line bg-white p-5 lg:p-6">
+      <section className="rounded-[20px] border border-line bg-white p-5 shadow-card lg:p-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="font-serif text-2xl font-bold leading-[1.08] tracking-tight text-ink sm:text-3xl">
@@ -206,7 +206,7 @@ export default function ProgramDetailPage() {
         </dl>
 
         {briefs.data && briefs.data.length > 0 && (
-          <section className="mt-6 rounded-xl border border-line bg-white p-5">
+          <section className="mt-6 rounded-[20px] border border-line bg-white p-5 shadow-card lg:p-6">
             <h2 className="text-base font-semibold text-ink">What the work looks like</h2>
             <p className="mt-1 text-sm text-secondary">
               Published project briefs for this program&apos;s domain. The exact

@@ -163,19 +163,21 @@ function CurrentInternshipCard({ internship }: { internship: Internship }) {
   return (
     <section
       aria-labelledby="current-internship"
-      className="rise-in overflow-hidden rounded-2xl border border-primary-800 bg-primary-800 text-white shadow-panel"
+      className="bg-evergreen rise-in relative overflow-hidden rounded-[24px] text-white shadow-panel"
     >
-      <div className="relative p-6 sm:p-7">
-        {/* Decorative growth rings */}
+      <div className="relative p-6 sm:p-8">
+        {/* Decorative texture + growth rings */}
+        <div aria-hidden="true" className="bg-dot-grid-light pointer-events-none absolute inset-0 opacity-50 [mask-image:linear-gradient(to_left,black,transparent_60%)]" />
         <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full border border-white/10" />
         <div aria-hidden="true" className="pointer-events-none absolute -right-4 -top-8 h-40 w-40 rounded-full border border-white/10" />
 
         <div className="relative flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-primary-200">
+            <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-primary-100 ring-1 ring-inset ring-white/15">
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent-400" />
               Your internship · {INTERNSHIP_STATUS_LABEL[internship.status]}
             </p>
-            <h2 id="current-internship" className="mt-2 font-serif text-2xl font-semibold leading-tight text-balance">
+            <h2 id="current-internship" className="mt-3 font-serif text-[1.75rem] font-bold leading-tight tracking-[-0.03em] text-balance">
               {internship.program?.title ?? 'Internship'}
             </h2>
             <p className="mt-1.5 text-sm text-primary-100">
@@ -185,7 +187,7 @@ function CurrentInternshipCard({ internship }: { internship: Internship }) {
           </div>
           <Link
             href={`/internships/${internship.id}`}
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-primary-800 shadow-xs transition-colors hover:bg-primary-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-800"
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-accent-400 px-5 text-sm font-semibold text-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.4),0_8px_20px_-8px_rgb(245_170_47/0.6)] transition-colors hover:bg-accent-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-800"
           >
             Open workspace
             <ArrowRightIcon className="h-4 w-4" />
@@ -198,7 +200,10 @@ function CurrentInternshipCard({ internship }: { internship: Internship }) {
               <p className="text-sm text-primary-100">
                 {p.approvedMandatoryTasks} of {p.mandatoryTasks} mandatory tasks approved
               </p>
-              <p className="font-serif text-3xl font-semibold tabular-nums">{pct}%</p>
+              <p className="font-serif text-[2.5rem] font-bold leading-none tracking-[-0.04em] tabular-nums">
+                {pct}
+                <span className="text-xl text-primary-200">%</span>
+              </p>
             </div>
             <div
               role="progressbar"
@@ -206,24 +211,24 @@ function CurrentInternshipCard({ internship }: { internship: Internship }) {
               aria-valuenow={pct}
               aria-valuemin={0}
               aria-valuemax={100}
-              className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-white/15"
+              className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-white/15"
             >
-              <div className="h-full rounded-full bg-accent-100 transition-[width] duration-500" style={{ width: `${pct}%` }} />
+              <div className="h-full rounded-full bg-linear-to-r from-accent-300 to-accent-400 shadow-[0_0_12px_rgb(245_170_47/0.6)] transition-[width] duration-700" style={{ width: `${pct}%` }} />
             </div>
 
-            <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
-              <div className="rounded-xl bg-white/10 px-4 py-3">
-                <dt className="text-primary-200">Next task</dt>
-                <dd className="mt-0.5 truncate font-medium">{p.nextTask?.title ?? 'All caught up'}</dd>
+            <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-3">
+              <div className="rounded-2xl bg-white/[0.08] px-4 py-3.5 ring-1 ring-inset ring-white/10">
+                <dt className="text-[12px] font-medium text-primary-200">Next task</dt>
+                <dd className="mt-1 truncate font-semibold">{p.nextTask?.title ?? 'All caught up'}</dd>
                 {p.nextTask && <dd className="text-xs text-primary-200">Due {formatDate(p.nextTask.dueDate)}</dd>}
               </div>
-              <div className="rounded-xl bg-white/10 px-4 py-3">
-                <dt className="text-primary-200">Waiting for review</dt>
-                <dd className="mt-0.5 font-serif text-xl font-semibold tabular-nums">{p.pendingReviewCount}</dd>
+              <div className="rounded-2xl bg-white/[0.08] px-4 py-3.5 ring-1 ring-inset ring-white/10">
+                <dt className="text-[12px] font-medium text-primary-200">Waiting for review</dt>
+                <dd className="mt-1 font-serif text-2xl font-bold tabular-nums">{p.pendingReviewCount}</dd>
               </div>
-              <div className="rounded-xl bg-white/10 px-4 py-3">
-                <dt className="text-primary-200">Timeline</dt>
-                <dd className="mt-0.5 font-medium">{formatDate(internship.startDate)} – {formatDate(internship.endDate)}</dd>
+              <div className="rounded-2xl bg-white/[0.08] px-4 py-3.5 ring-1 ring-inset ring-white/10">
+                <dt className="text-[12px] font-medium text-primary-200">Timeline</dt>
+                <dd className="mt-1 font-semibold">{formatDate(internship.startDate)} – {formatDate(internship.endDate)}</dd>
               </div>
             </dl>
           </div>

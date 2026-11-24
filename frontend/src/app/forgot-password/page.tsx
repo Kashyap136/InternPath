@@ -83,28 +83,28 @@ export default function ForgotPasswordPage() {
       panelBody="We email a one-time code to the address on your account. Resetting your password signs you out everywhere else."
     >
       <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-ink">
+        <h1 className="font-serif text-[28px] font-bold leading-[1.1] tracking-[-0.035em] text-ink">
           Reset your password
         </h1>
-        <p className="mt-5 max-w-[34rem] text-base leading-7 text-body text-pretty">
+        <p className="mt-2.5 text-[14.5px] leading-relaxed text-secondary text-pretty">
           {step === 'request'
             ? 'Enter the email address you use for InternPath and we will send you a 6-digit code.'
             : `Enter the code sent to ${email.trim()} and choose a new password.`}
         </p>
 
         {notice && step === 'reset' && (
-          <div className="mt-8">
+          <div className="mt-6">
             <Alert variant="info" title="Check your email">{notice}</Alert>
           </div>
         )}
         {error && (
-          <div className="mt-8">
+          <div className="mt-6">
             <Alert variant="error" title="Something went wrong">{error}</Alert>
           </div>
         )}
 
         {step === 'request' ? (
-          <form onSubmit={(e) => void requestCode(e)} className="mt-9 space-y-5" noValidate>
+          <form onSubmit={(e) => void requestCode(e)} className="mt-7 space-y-5" noValidate>
             <Field label="Email" htmlFor="email" error={errors.email}>
               <TextInput
                 id="email"
@@ -124,7 +124,7 @@ export default function ForgotPasswordPage() {
             </Button>
           </form>
         ) : (
-          <form onSubmit={(e) => void resetPassword(e)} className="mt-9 space-y-5" noValidate>
+          <form onSubmit={(e) => void resetPassword(e)} className="mt-7 space-y-5" noValidate>
             <Field label="6-digit code" htmlFor="code" error={errors.code}>
               <TextInput
                 id="code"

@@ -8,8 +8,14 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth, roleLabels } from '@/lib/auth-context';
-import { Avatar, Button } from '@/components/ui';
-import { ChevronDownIcon } from '@/components/icons';
+import { Avatar, Spinner } from '@/components/ui';
+import {
+  BellIcon,
+  ChevronDownIcon,
+  KeyIcon,
+  SignOutIcon,
+  UserCircleIcon,
+} from '@/components/icons';
 
 export function AccountMenu() {
   const { user, signOut } = useAuth();
@@ -80,11 +86,12 @@ export function AccountMenu() {
         aria-expanded={open}
         aria-controls="account-menu"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 items-center gap-2 rounded-lg px-1.5 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+        className="flex h-10 items-center gap-2.5 rounded-full border border-transparent py-1 pl-1 pr-1.5 text-left transition-colors hover:border-line hover:bg-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 lg:pr-3"
       >
         <Avatar name={user.fullName} />
-        <span className="hidden max-w-[8rem] truncate text-sm font-medium text-ink lg:inline">
-          {firstName}
+        <span className="hidden min-w-0 flex-col leading-tight lg:flex">
+          <span className="max-w-[9rem] truncate text-[13px] font-semibold text-ink">{firstName}</span>
+          <span className="text-[11px] font-medium text-muted">{roleLabels[user.role]}</span>
         </span>
         <ChevronDownIcon
           className={`hidden h-4 w-4 text-muted transition-transform lg:block ${
@@ -96,45 +103,62 @@ export function AccountMenu() {
       {open && (
         <div
           id="account-menu"
-          className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-line bg-white shadow-panel"
+          className="pop-in absolute right-0 z-40 mt-2 w-72 overflow-hidden rounded-2xl border border-line bg-white shadow-dialog"
         >
-          <div className="border-b border-line px-4 py-3">
-            <p className="truncate text-sm font-semibold text-ink">
-              {user.fullName}
-            </p>
-            <p className="truncate text-[13px] text-muted">{user.email}</p>
-            <p className="mt-0.5 text-[13px] text-secondary">
-              {roleLabels[user.role]}
-            </p>
+          <div className="relative overflow-hidden bg-evergreen px-4 py-4">
+            <div aria-hidden="true" className="bg-dot-grid-light pointer-events-none absolute inset-0 opacity-60" />
+            <div className="relative flex items-center gap-3">
+              <Avatar name={user.fullName} className="h-11 w-11 text-sm ring-white/20" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">{user.fullName}</p>
+                <p className="truncate text-[12px] text-primary-100">{user.email}</p>
+                <p className="mt-1.5 inline-flex rounded-full bg-accent-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-ink">
+                  {roleLabels[user.role]}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="p-1.5">
-            {user.role === 'ADMIN' && (
-              <Link
-                href="/profile"
-                onClick={() => setOpen(false)}
-                className="block rounded-md px-3 py-2 text-sm text-body transition-colors hover:bg-surface-subtle hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
-              >
-                My account
-              </Link>
-            )}
+          <div className="p-2">
+            <Link
+              href="/profile"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-body transition-colors hover:bg-surface-subtle hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
+            >
+              <UserCircleIcon className="h-[18px] w-[18px] text-muted" />
+              {user.role === 'ADMIN' ? 'My account' : 'My profile'}
+            </Link>
+            <Link
+              href="/notifications"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-body transition-colors hover:bg-surface-subtle hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
+            >
+              <BellIcon className="h-[18px] w-[18px] text-muted" />
+              Notifications
+            </Link>
             <Link
               href="/change-password"
               onClick={() => setOpen(false)}
-              className="block rounded-md px-3 py-2 text-sm text-body transition-colors hover:bg-surface-subtle hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-body transition-colors hover:bg-surface-subtle hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
             >
+              <KeyIcon className="h-[18px] w-[18px] text-muted" />
               Change password
             </Link>
-            <div className="px-1.5 py-1.5">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="w-full"
-                loading={signingOut}
-                onClick={() => void handleSignOut()}
-              >
-                {signingOut ? 'Signing out…' : 'Sign out'}
-              </Button>
-            </div>
+          </div>
+          <div className="border-t border-line p-2">
+            <button
+              type="button"
+              disabled={signingOut}
+              aria-busy={signingOut || undefined}
+              onClick={() => void handleSignOut()}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-danger-text transition-colors hover:bg-danger-bg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-danger-solid disabled:opacity-60"
+            >
+              {signingOut ? (
+                <Spinner className="h-[18px] w-[18px]" ariaHidden />
+              ) : (
+                <SignOutIcon className="h-[18px] w-[18px]" />
+              )}
+              {signingOut ? 'Signing out…' : 'Sign out'}
+            </button>
           </div>
         </div>
       )}

@@ -127,24 +127,24 @@ export default function RegisterPage() {
       }
     >
       <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-ink">
+        <h1 className="font-serif text-[28px] font-bold leading-[1.1] tracking-[-0.035em] text-ink">
           Create your student account
         </h1>
-        <p className="mt-5 max-w-[34rem] text-base leading-7 text-body text-pretty">
+        <p className="mt-2.5 text-[14.5px] leading-relaxed text-secondary text-pretty">
           Register quickly with role-based access — your account will start as
           a student. Mentors and administrators are created by administrators
           with secure, temporary passwords.
         </p>
 
         {error && (
-          <div className="mt-8">
+          <div className="mt-6">
             <Alert variant="error" title="Registration failed">{error}</Alert>
           </div>
         )}
 
         <form
           onSubmit={(e) => void handleSubmit(e)}
-          className="mt-9 space-y-5"
+          className="mt-7 space-y-5"
           noValidate
         >
           {Object.keys(fieldErrors).length >= 2 && (

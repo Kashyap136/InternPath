@@ -191,7 +191,7 @@ export default function ApplicationsPage() {
               // would both open the confirm dialog and navigate away.
               <div
                 key={application.id}
-                className="rounded-xl border border-line bg-white p-5"
+                className="rounded-[20px] border border-line bg-white p-5 shadow-card"
               >
                 <div className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${color} text-[11px] font-bold text-white tracking-tight`}>
                   {program ? program.title.slice(0, 1) : 'P'}

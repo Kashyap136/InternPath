@@ -42,16 +42,20 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 const itemBase =
-  'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500';
+  'group flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500';
+
+type IconComponent = (props: { className?: string }) => React.ReactNode;
 
 function NavLinkItem({
   link,
   active,
   onNavigate,
+  Icon,
 }: {
   link: NavLink;
   active: boolean;
   onNavigate: () => void;
+  Icon?: IconComponent;
 }) {
   return (
     <Link
@@ -59,15 +63,22 @@ function NavLinkItem({
       aria-current={active ? 'page' : undefined}
       onClick={onNavigate}
       className={`${itemBase} ${
-        active ? 'bg-primary-50 text-primary-800' : 'text-secondary hover:bg-surface-subtle hover:text-ink'
+        active
+          ? 'bg-primary-50 text-primary-800 ring-1 ring-inset ring-primary-100'
+          : 'text-body hover:bg-surface-subtle hover:text-ink'
       }`}
     >
-      <span>{link.label}</span>
+      {Icon && (
+        <Icon
+          className={`h-[18px] w-[18px] shrink-0 ${
+            active ? 'text-primary-700' : 'text-muted group-hover:text-secondary'
+          }`}
+        />
+      )}
+      <span className="flex-1">{link.label}</span>
       <span
         aria-hidden="true"
-        className={`h-1.5 w-1.5 rounded-full ${
-          active ? 'bg-primary-600' : 'bg-transparent'
-        }`}
+        className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-accent-500' : 'bg-transparent'}`}
       />
     </Link>
   );
@@ -77,17 +88,19 @@ function PanelGroups({
   groups,
   pathname,
   onNavigate,
+  icons,
 }: {
   groups: NavGroup[];
   pathname: string;
   onNavigate: () => void;
+  icons?: Record<string, IconComponent>;
 }) {
   return (
     <>
       {groups.map((group, index) => (
-        <div key={group.label ?? `group-${index}`} className="space-y-1">
+        <div key={group.label ?? `group-${index}`} className="space-y-0.5">
           {group.label && (
-            <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+            <p className="px-3 pb-1.5 pt-3 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted">
               {group.label}
             </p>
           )}
@@ -97,6 +110,7 @@ function PanelGroups({
               link={link}
               active={isActive(pathname, link.href)}
               onNavigate={onNavigate}
+              Icon={icons?.[link.href]}
             />
           ))}
         </div>
@@ -108,9 +122,12 @@ function PanelGroups({
 export function NavMenu({
   groups,
   label = 'Site menu',
+  icons,
 }: {
   groups: NavGroup[];
   label?: string;
+  /** Optional icon per href (the authenticated shell passes its nav icons). */
+  icons?: Record<string, IconComponent>;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -208,7 +225,9 @@ export function NavMenu({
         aria-controls={panelId}
         aria-label={label}
         onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
+        className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 ${
+          open ? 'border-line bg-white text-ink' : 'border-transparent text-ink hover:border-line hover:bg-white'
+        }`}
       >
         {open ? (
           <XIcon className="h-5 w-5" />
@@ -226,7 +245,7 @@ export function NavMenu({
           <div
             aria-hidden="true"
             onClick={() => close()}
-            className="fixed inset-0 z-40 bg-ink/25 md:hidden"
+            className="fade-in fixed inset-0 z-40 bg-primary-950/40 backdrop-blur-[2px] md:hidden"
           />
           <div
             ref={panelRef}
@@ -234,21 +253,21 @@ export function NavMenu({
             role="dialog"
             aria-modal="true"
             aria-label={label}
-            className="fixed inset-y-0 right-0 z-50 flex w-80 max-w-[85vw] flex-col overflow-y-auto border-l border-line bg-white p-4 shadow-xl md:absolute md:inset-auto md:top-full md:right-0 md:mt-2 md:max-h-[70vh] md:w-72 md:rounded-xl md:border md:shadow-lg"
+            className="slide-in-right fixed inset-y-0 right-0 z-50 flex w-80 max-w-[86vw] flex-col overflow-y-auto border-l border-line bg-white p-3 shadow-dialog md:pop-in md:absolute md:inset-auto md:top-full md:right-0 md:mt-2 md:max-h-[72vh] md:w-76 md:rounded-2xl md:border md:p-2"
           >
-            <div className="mb-2 flex items-center justify-between md:hidden">
-              <span className="text-sm font-semibold text-ink">Menu</span>
+            <div className="mb-1 flex items-center justify-between border-b border-line px-2 pb-3 pt-1 md:hidden">
+              <span className="font-serif text-base font-semibold text-ink">Menu</span>
               <button
                 type="button"
                 aria-label="Close menu"
                 onClick={() => close(true)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-secondary hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-secondary hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
               >
                 <XIcon className="h-5 w-5" />
               </button>
             </div>
             <nav aria-label={label} className="flex flex-col gap-1 pb-2">
-              <PanelGroups groups={groups} pathname={pathname} onNavigate={() => close()} />
+              <PanelGroups groups={groups} pathname={pathname} onNavigate={() => close()} icons={icons} />
             </nav>
           </div>
         </>

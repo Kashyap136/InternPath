@@ -149,7 +149,7 @@ function ProgramsView() {
               <Link
                 key={program.id}
                 href={`/programs/${program.id}`}
-                className="group rounded-xl border border-line bg-white p-5 transition-colors hover:border-primary-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                className="group rounded-[20px] border border-line bg-white p-5 shadow-card transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-panel focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
               >
                 <div className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${color} text-[11px] font-bold text-white tracking-tight`}>
                   {program.title.slice(0, 1)}

@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { parseApiError, type FieldErrors } from '@/lib/form-errors';
 import { Alert, Button, Field, LoadingState, PasswordInput, Wordmark } from '@/components/ui';
-import { ArrowLeftIcon } from '@/components/icons';
+import { ArrowLeftIcon, CheckIcon, KeyIcon } from '@/components/icons';
 
 const LABELS: Record<string, string> = {
   currentPassword: 'Current password',
@@ -110,8 +110,8 @@ export default function ChangePasswordPage() {
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-line bg-white">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-20 border-b border-line/70 bg-canvas/75 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <Wordmark href="/dashboard" />
           <div className="flex items-center gap-2">
             {forced ? (
@@ -135,27 +135,40 @@ export default function ChangePasswordPage() {
         </div>
       </header>
 
-      <main className="flex-1">
-        <div className="mx-auto grid w-full max-w-6xl items-stretch gap-10 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-14 lg:px-8 lg:py-16">
+      <main className="relative flex-1">
+        <div aria-hidden="true" className="bg-hero-wash pointer-events-none absolute inset-0" />
+        <div className="relative mx-auto grid w-full max-w-6xl items-stretch gap-10 px-4 py-8 sm:px-6 lg:grid-cols-2 lg:gap-14 lg:px-8 lg:py-12">
           {/* Context panel — large screens only */}
           <aside className="hidden self-stretch lg:block">
-            <div className="flex h-full flex-col rounded-xl bg-primary-950 p-10">
-              <p className="text-[22px] font-bold leading-7 tracking-tight text-white text-balance">
+            <div className="bg-evergreen relative flex h-full min-h-[520px] flex-col overflow-hidden rounded-[28px] p-10 shadow-panel">
+              <div aria-hidden="true" className="bg-line-grid-light pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_top_left,black,transparent_75%)]" />
+              <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-accent-400/20 blur-3xl" />
+              <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-accent-300 ring-1 ring-white/15">
+                <KeyIcon className="h-6 w-6" />
+              </span>
+              <p className="relative mt-8 font-serif text-[34px] font-bold leading-[1.08] tracking-[-0.035em] text-white text-balance">
                 Choose a new password
               </p>
-              <ul className="mt-4 space-y-2 text-[15px] leading-relaxed text-primary-100">
-                <li>At least 8 characters.</li>
-                <li>You&apos;ll be signed out on every device and asked to sign in again.</li>
-                {forced && (
-                  <li>Your temporary password works only once.</li>
-                )}
+              <ul className="relative mt-auto space-y-4 pt-10 text-[15px] leading-relaxed text-primary-100">
+                {[
+                  'At least 8 characters.',
+                  'You’ll be signed out on every device and asked to sign in again.',
+                  ...(forced ? ['Your temporary password works only once.'] : []),
+                ].map((point) => (
+                  <li key={point} className="flex gap-3">
+                    <span aria-hidden="true" className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-400/20 text-accent-300 ring-1 ring-accent-300/40">
+                      <CheckIcon className="h-3 w-3" />
+                    </span>
+                    <span>{point}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           </aside>
 
-          {/* Form column — ivory card */}
-          <div className="mx-auto w-full max-w-[400px] self-center lg:mx-0 lg:justify-self-end">
-            <div className="rounded-xl border border-line bg-white p-8 sm:p-10">
+          {/* Form column — elevated card */}
+          <div className="mx-auto w-full max-w-[440px] self-center lg:mx-0 lg:justify-self-center">
+            <div className="rise-in rounded-[24px] border border-line bg-white p-6 shadow-panel sm:p-9">
               {!forced && (
                 <Link
                   href="/dashboard"
@@ -166,7 +179,7 @@ export default function ChangePasswordPage() {
                 </Link>
               )}
 
-              <h1 className={`font-serif text-2xl font-bold leading-[1.08] tracking-tight text-ink ${!forced ? 'mt-5' : 'mt-0'}`}>
+              <h1 className={`font-serif text-[28px] font-bold leading-[1.1] tracking-[-0.035em] text-ink ${!forced ? 'mt-5' : 'mt-0'}`}>
                 {forced ? 'Set a new password' : 'Change password'}
               </h1>
               <p className="mt-1.5 max-w-[30rem] text-sm leading-relaxed text-secondary text-pretty">
@@ -174,7 +187,7 @@ export default function ChangePasswordPage() {
               </p>
 
               {forced && (
-                <div className="mt-8">
+                <div className="mt-6">
                   <Alert variant="warning" title="Password change required">
                     Your account is using a temporary password. Set a new password to continue.
                   </Alert>
@@ -182,14 +195,14 @@ export default function ChangePasswordPage() {
               )}
 
               {error && (
-                <div className="mt-8">
+                <div className="mt-6">
                   <Alert variant="error" title="Password change failed">{error}</Alert>
                 </div>
               )}
 
               <form
                 onSubmit={(e) => void handleSubmit(e)}
-                className="mt-9 space-y-5"
+                className="mt-7 space-y-5"
                 noValidate
               >
                 {Object.keys(fieldErrors).length >= 2 && (

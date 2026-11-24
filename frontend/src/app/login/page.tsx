@@ -116,17 +116,17 @@ function LoginForm() {
 
   return (
     <div>
-      <h1 className="font-serif text-3xl font-bold tracking-tight text-ink">
+      <h1 className="font-serif text-[28px] font-bold leading-[1.1] tracking-[-0.035em] text-ink">
         Sign in to InternPath
       </h1>
-      <p className="mt-5 max-w-[34rem] text-base leading-7 text-body text-pretty">
+      <p className="mt-2.5 text-[14.5px] leading-relaxed text-secondary text-pretty">
         Use the email address your account was created with. Mentors and
         administrators receive a temporary password from an administrator and
         set their own on first sign-in.
       </p>
 
       {changed && (
-        <div className="mt-8">
+        <div className="mt-6">
           <Alert variant="success" title="Password changed">
             Please sign in with your new password.
           </Alert>
@@ -134,7 +134,7 @@ function LoginForm() {
       )}
 
       {expired && !changed && (
-        <div className="mt-8">
+        <div className="mt-6">
           <Alert variant="info" title="Your session ended">
             For your security we signed you out. Sign in again to continue.
           </Alert>
@@ -142,13 +142,13 @@ function LoginForm() {
       )}
 
       {error && (
-        <div className="mt-8">
+        <div className="mt-6">
           <Alert variant="error" title="Could not sign in">{error}</Alert>
         </div>
       )}
 
       {oauthError && !error && (
-        <div className="mt-8">
+        <div className="mt-6">
           <Alert variant="error" title="Could not sign in with Google">
             {oauthError}
           </Alert>
@@ -157,7 +157,7 @@ function LoginForm() {
 
       <form
         onSubmit={(e) => void handleSubmit(e)}
-        className="mt-9 space-y-5"
+        className="mt-7 space-y-5"
         noValidate
       >
         {Object.keys(fieldErrors).length >= 2 && (
@@ -222,7 +222,7 @@ function LoginForm() {
       {/* Collapsible demo helper — ivory card with colored left edge, only
            expanded on request, gated by demoNoticeEnabled (ASM-CAND-022). */}
       {demoNoticeEnabled && (
-        <div className="mt-9">
+        <div className="mt-7">
           <button
             type="button"
             onClick={() => setDemoOpen((v) => !v)}
@@ -286,7 +286,7 @@ function LoginForm() {
         with a code sent to your email.
       </p>
 
-      <p className="mt-10 border-t border-line pt-6 text-center text-sm text-secondary">
+      <p className="mt-8 border-t border-line pt-6 text-center text-sm text-secondary">
         New to InternPath?{' '}
         <Link
           href="/register"
