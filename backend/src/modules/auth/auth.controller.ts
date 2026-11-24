@@ -637,7 +637,9 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
 
     // Redirect to the frontend (fixed path — no open redirect).
     res.redirect(`${config.FRONTEND_URL}/dashboard`);
-  } catch {
+  } catch (err) {
+    // Server-side only: the browser still gets the generic message.
+    console.error('Google OAuth callback failed:', err instanceof Error ? err.message : err);
     redirectToLogin('Google sign-in failed; please try again');
   }
 });
