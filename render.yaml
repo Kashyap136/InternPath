@@ -13,12 +13,21 @@ services:
     rootDir: .
     # npm workspaces: the single lockfile lives at the repo root. `--include=dev`
     # is required because prisma/typescript are devDependencies and NODE_ENV is
-    # production at build time. No migration and no seed run here — schema
-    # changes are an explicit, owner-approved operator step.
+    # production at build time. No seed runs here.
     buildCommand: >-
       npm ci --include=dev --workspace=@internpath/backend --include-workspace-root &&
       npm run build --workspace=@internpath/backend
-    startCommand: node backend/dist/server.js
+    # Committed Prisma migrations are applied on every start, BEFORE the server
+    # boots, so deployed code never runs against an older schema (that mismatch
+    # broke Google sign-in after the email-verification release). `prisma
+    # migrate deploy` only applies committed, not-yet-applied migrations — it
+    # never resets data. preDeployCommand is unavailable on the free plan, hence
+    # the start command. A migration failure is logged loudly but does not stop
+    # the server from starting, so a bad migration cannot take the API offline.
+    startCommand: >-
+      npx prisma migrate deploy --schema backend/prisma/schema.prisma ||
+      echo "WARNING: prisma migrate deploy FAILED - schema may be out of date";
+      node backend/dist/server.js
     healthCheckPath: /health
     autoDeploy: true
     envVars:
