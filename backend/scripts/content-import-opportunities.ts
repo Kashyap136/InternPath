@@ -1,7 +1,16 @@
-// Non-destructive importer for the InternPath opportunity content package.
+// Non-destructive importer for the InternPath opportunity content packages.
 //
-//   npx tsx scripts/content-import-opportunities.ts            # dry run (read-only plan)
-//   npx tsx scripts/content-import-opportunities.ts --apply    # create missing DRAFT records
+//   npx tsx scripts/content-import-opportunities.ts                       # dry run, 2027 summer package
+//   npx tsx scripts/content-import-opportunities.ts --package=portfolio   # dry run, 25-project portfolio package
+//   ... --apply                                                           # create missing DRAFT records
+//   ... --apply --publish        # also submit → approve → publish each project (students can read the brief)
+//   ... --apply --open-programs  # also move DRAFT programs to OPEN (applications start!) — only once
+//                                #   real mentors with capacity exist for every domain
+//
+// Packages: summer (prisma/content/opportunities-2027-summer.ts, default) and
+// portfolio (prisma/content/opportunities-2027-portfolio.ts).
+// Cohort dates can be overridden for newly created programs with
+// INTERNPATH_COHORT_DEADLINE and INTERNPATH_COHORT_START (ISO-8601, UTC).
 //
 // What it does
 //  - Talks ONLY to the InternPath HTTP API (the supported mechanism: the same
@@ -13,8 +22,9 @@
 //    never modified. An existing project is reconciled (missing milestones,
 //    tasks and dependencies added) only while it is still DRAFT; anything
 //    beyond DRAFT is left untouched.
-//  - NEVER opens a program, submits/approves/publishes a project, deletes or
-//    updates anything, or touches users/applications/internships.
+//  - Without --publish / --open-programs it NEVER opens a program or
+//    submits/approves/publishes a project. It never deletes anything or
+//    touches users/applications/internships.
 //
 // Guards
 //  - --apply requires INTERNPATH_CONTENT_IMPORT_CONFIRM=<CONTENT_PACKAGE_ID>.
@@ -34,19 +44,33 @@
 // ARCHIVED in Admin > Programs. Project drafts stay invisible to students
 // while DRAFT. There is deliberately no delete step in this script.
 
-import {
-  CONTENT_PACKAGE_ID,
-  COHORT,
-  OPPORTUNITIES,
-  type OpportunityContent,
-} from '../prisma/content/opportunities-2027-summer';
+import * as summerPackage from '../prisma/content/opportunities-2027-summer';
+import * as portfolioPackage from '../prisma/content/opportunities-2027-portfolio';
+import type { OpportunityContent } from '../prisma/content/opportunities-2027-summer';
 
-const args = new Set(process.argv.slice(2));
+const PACKAGES = { summer: summerPackage, portfolio: portfolioPackage } as const;
+
+const argv = process.argv.slice(2);
+const args = new Set(argv);
 const APPLY = args.has('--apply');
+const PUBLISH = args.has('--publish');
+const OPEN_PROGRAMS = args.has('--open-programs');
 const ALLOW_PRODUCTION = args.has('--allow-production');
 const ALLOW_DEMO_AUTHOR = args.has('--allow-demo-author');
+const PACKAGE_NAME = (argv.find((a) => a.startsWith('--package='))?.split('=')[1] ?? 'summer') as keyof typeof PACKAGES;
+if (!(PACKAGE_NAME in PACKAGES)) {
+  console.error(`Unknown --package=${PACKAGE_NAME}. Use one of: ${Object.keys(PACKAGES).join(', ')}`);
+  process.exit(1);
+}
+const { CONTENT_PACKAGE_ID, OPPORTUNITIES } = PACKAGES[PACKAGE_NAME];
+const COHORT = {
+  applicationDeadline: process.env.INTERNPATH_COHORT_DEADLINE ?? PACKAGES[PACKAGE_NAME].COHORT.applicationDeadline,
+  startDate: process.env.INTERNPATH_COHORT_START ?? PACKAGES[PACKAGE_NAME].COHORT.startDate,
+};
 const API = (process.env.INTERNPATH_API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
-const PACE_MS = 120;
+// Delay between requests. Raise it on shared deployments: all browser traffic
+// arrives through one proxy and shares the global rate-limit budget.
+const PACE_MS = Number(process.env.INTERNPATH_IMPORT_PACE_MS ?? 120);
 
 let cookie = '';
 let requestCount = 0;
@@ -123,6 +147,7 @@ async function importOpportunity(o: OpportunityContent, domainId: string, existi
 
   // ---- Program (DRAFT) ----
   const prog = existingPrograms.get(o.program.title);
+  let programRef: { id: string; status: string } | null = prog ?? null;
   if (prog) {
     row.program = `exists ${prog.id} (${prog.status}) — not modified`;
   } else if (!APPLY) {
@@ -140,14 +165,17 @@ async function importOpportunity(o: OpportunityContent, domainId: string, existi
     expectStatus(r, [201], `create program "${o.program.title}"`);
     if (r.json.data.status !== 'DRAFT') throw new StopError(`Program ${r.json.data.id} was not created as DRAFT`);
     row.program = `created ${r.json.data.id} (DRAFT)`;
+    programRef = { id: r.json.data.id, status: 'DRAFT' };
   }
+  if (OPEN_PROGRAMS) row.program += ` · ${await openProgram(programRef)}`;
 
   // ---- Project (DRAFT) ----
   const existing = existingProjects.get(o.project.title);
   let projectId: string | null = null;
   if (existing) {
     if (existing.status !== 'DRAFT') {
-      row.project = `exists ${existing.id} (${existing.status}) — beyond DRAFT, not touched`;
+      row.project = `exists ${existing.id} (${existing.status}) — beyond DRAFT, structure not touched`;
+      if (PUBLISH) row.publish = await publishProject(existing.id, existing.status);
       summary.push(row);
       return;
     }
@@ -224,11 +252,50 @@ async function importOpportunity(o: OpportunityContent, domainId: string, existi
   row.structure = APPLY
     ? `+${created.milestones} milestones, +${created.tasks} tasks, +${created.deps} dependencies`
     : 'existing draft — dry run, no structure changes';
+  if (PUBLISH) row.publish = await publishProject(projectId!, 'DRAFT');
   summary.push(row);
 }
 
+/** --publish: DRAFT → PENDING_REVIEW → APPROVED → PUBLISHED via the admin API. */
+async function publishProject(id: string, status: string): Promise<string> {
+  if (status === 'PUBLISHED') return 'already PUBLISHED';
+  if (status === 'ARCHIVED') return 'ARCHIVED — left alone';
+  if (!APPLY) return `would publish (from ${status})`;
+  let current = status;
+  if (current === 'DRAFT') {
+    const r = await call('POST', `/api/projects/${id}/submit`);
+    expectStatus(r, [200, 201], `submit project ${id}`);
+    current = 'PENDING_REVIEW';
+  }
+  if (current === 'PENDING_REVIEW') {
+    const r = await call('POST', `/api/admin/projects/${id}/review`, {
+      decision: 'APPROVED',
+      comments: `Approved on import of content package ${CONTENT_PACKAGE_ID}`,
+    });
+    expectStatus(r, [200, 201], `approve project ${id}`);
+    current = 'APPROVED';
+  }
+  if (current === 'APPROVED') {
+    const r = await call('POST', `/api/admin/projects/${id}/publish`);
+    expectStatus(r, [200, 201], `publish project ${id}`);
+    return 'PUBLISHED';
+  }
+  return `left at ${current}`;
+}
+
+/** --open-programs: DRAFT → OPEN (applications start). */
+async function openProgram(program: { id: string; status: string } | null): Promise<string> {
+  if (!program) return 'would open';
+  if (program.status !== 'DRAFT') return `left at ${program.status}`;
+  if (!APPLY) return 'would open';
+  const r = await call('PUT', `/api/admin/programs/${program.id}/status`, { status: 'OPEN' });
+  expectStatus(r, [200], `open program ${program.id}`);
+  return 'OPEN';
+}
+
 async function main(): Promise<void> {
-  console.log(`InternPath content import — package ${CONTENT_PACKAGE_ID} — ${APPLY ? 'APPLY' : 'DRY RUN'} — target ${API}`);
+  console.log(`InternPath content import — package ${CONTENT_PACKAGE_ID} — ${APPLY ? 'APPLY' : 'DRY RUN'}${PUBLISH ? ' +publish' : ''}${OPEN_PROGRAMS ? ' +open-programs' : ''} — target ${API}`);
+  console.log(`Cohort for new programs: deadline ${COHORT.applicationDeadline}, start ${COHORT.startDate}`);
 
   if (APPLY && process.env.INTERNPATH_CONTENT_IMPORT_CONFIRM !== CONTENT_PACKAGE_ID) {
     throw new StopError(`--apply requires INTERNPATH_CONTENT_IMPORT_CONFIRM=${CONTENT_PACKAGE_ID}`);
@@ -273,7 +340,7 @@ async function main(): Promise<void> {
   }
 
   console.table(summary);
-  console.log(`Done (${requestCount} HTTP requests). Nothing was opened or published; all imported records are DRAFT.`);
+  console.log(`Done (${requestCount} HTTP requests).${PUBLISH || OPEN_PROGRAMS ? '' : ' Nothing was opened or published; all imported records are DRAFT.'}`);
 }
 
 main().catch((err: unknown) => {
