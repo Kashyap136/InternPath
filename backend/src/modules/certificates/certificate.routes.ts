@@ -1,10 +1,3 @@
-// Certificate Routes (Sprint 5)
-//
-// Student surface  /api/certificates        — own certificates + download (FR-090)
-// Admin surface    /api/admin/certificates  — issue (FR-087), revoke (FR-092), list
-// Public surface   /api/verify/:number      — public verification, no login (FR-091);
-//                                             protected only by the global rate limiter
-
 import { Router } from 'express';
 import { asyncHandler } from '../../shared/middleware/errorHandler';
 import { validate } from '../../shared/middleware/validation';
@@ -15,12 +8,15 @@ import {
   listMyCertificates,
   adminListCertificates,
   issueCertificate,
+  issuePendingCertificates,
+  listEligibleInternships,
   revokeCertificate,
   downloadCertificate,
   verifyCertificate,
 } from './certificate.controller';
 import {
   issueCertificateSchema,
+  issuePendingSchema,
   certificateIdParams,
   revokeCertificateSchema,
   verifyParams,
@@ -44,14 +40,14 @@ const adminRouter: Router = Router();
 
 adminRouter.use(authMiddleware, requireRole('ADMIN'));
 adminRouter.get('/', validate(listCertificatesQuery), asyncHandler(adminListCertificates));
+adminRouter.get('/eligible', asyncHandler(listEligibleInternships));
 adminRouter.post('/issue', validate(issueCertificateSchema), asyncHandler(issueCertificate));
+adminRouter.post('/issue-pending', validate(issuePendingSchema), asyncHandler(issuePendingCertificates));
 adminRouter.post('/:id/revoke', validate(revokeCertificateSchema), asyncHandler(revokeCertificate));
 adminRouter.get('/:id/download', validate(certificateIdParams), asyncHandler(downloadCertificate));
 
 const publicRouter: Router = Router();
 
-// P1-02 (comprehensive audit 2026-11-15): NFR-CAND-005 requires a limit on
-// public certificate verification too — a separate, generous read budget.
 publicRouter.get(
   '/:certificateNumber',
   createVerificationRateLimiter(),

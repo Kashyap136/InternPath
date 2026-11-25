@@ -10,6 +10,7 @@ import { use, useState } from 'react';
 import {
   Alert,
   Button,
+  ButtonLink,
   Checkbox,
   ConfirmDialog,
   EmptyState,
@@ -37,7 +38,6 @@ import {
 } from '@/lib/status';
 import { ProgressBar } from '@/components/ui';
 import type {
-  CertificateStatus,
   InternTask,
   Internship,
 } from '@/types';
@@ -401,45 +401,47 @@ export default function InternshipDetailPage({ params }: { params: Promise<{ id:
         </Panel>
       )}
 
-      {internship.certificate || internship.certificateAvailable ? (
+      {internship.certificate || internship.appreciationCertificate || internship.certificateAvailable ? (
         <Panel>
-          <h2 className="font-serif text-base font-semibold text-ink">Certificate</h2>
-          {internship.certificate ? (
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm">
-                <p className="font-medium text-ink">
-                  {internship.certificate.certificateNumber}
-                </p>
-                <p className="text-secondary">
-                  {internship.certificate.type === 'COMPLETION' ? 'Completion' : 'Appreciation'}{' '}
-                  certificate ·{' '}
-                  <StatusBadge
-                    tone={
-                      (internship.certificate.status as CertificateStatus) === 'VALID'
-                        ? 'success'
-                        : 'danger'
-                    }
-                  >
-                    {CERTIFICATE_STATUS_LABEL[internship.certificate.status as CertificateStatus]}
-                  </StatusBadge>
-                </p>
-              </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                  window.open(`/api/backend/api/certificates/${internship.certificate!.id}/download`, '_blank')
-                }
-              >
-                Download PDF
-              </Button>
-            </div>
-          ) : (
-            <p className="mt-2 text-sm text-secondary">
-              Congratulations – your internship is complete. Your certificate is being prepared
-              by the InternPath administration and will appear here and under My certificates.
-            </p>
-          )}
+          <h2 className="font-serif text-base font-semibold text-ink">Certificates</h2>
+          <div className="mt-2 space-y-3">
+            {[internship.certificate, internship.appreciationCertificate]
+              .filter((c): c is NonNullable<typeof c> => Boolean(c))
+              // A revoked completion certificate awaiting reissue is explained below.
+              .filter((c) => !(c.type === 'COMPLETION' && c.status === 'REVOKED' && internship.certificateAvailable))
+              .map((cert) => (
+                <div key={cert.id} className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 text-sm">
+                    <p className="font-mono font-medium text-ink">{cert.certificateNumber}</p>
+                    <p className="flex flex-wrap items-center gap-1.5 text-secondary">
+                      {cert.type === 'COMPLETION' ? 'Completion' : 'Appreciation'} certificate ·{' '}
+                      <StatusBadge tone={cert.status === 'VALID' ? 'success' : 'danger'}>
+                        {CERTIFICATE_STATUS_LABEL[cert.status]}
+                      </StatusBadge>
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <ButtonLink href={`/verify/${encodeURIComponent(cert.certificateNumber)}`} variant="secondary" size="sm">
+                      Verify
+                    </ButtonLink>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => window.open(`/api/backend/api/certificates/${cert.id}/download`, '_blank')}
+                    >
+                      Download PDF
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            {internship.certificateAvailable && (
+              <p className="text-sm text-secondary">
+                {internship.certificate?.status === 'REVOKED'
+                  ? `Certificate ${internship.certificate.certificateNumber} was revoked. A replacement is being prepared by the InternPath administration.`
+                  : 'Congratulations – your internship is complete. Your certificate is being prepared by the InternPath administration and will appear here and under My certificates.'}
+              </p>
+            )}
+          </div>
         </Panel>
       ) : null}
 

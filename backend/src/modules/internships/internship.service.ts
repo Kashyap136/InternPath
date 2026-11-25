@@ -18,6 +18,7 @@ import { notify } from '../notifications/notification.service';
 import { calculateInternshipProgress } from './internship-progress';
 import type { Prisma } from '@prisma/client';
 import { canSupervise, type Supervisor } from './internship.types';
+import { certificateService } from '../certificates/certificate.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -206,7 +207,7 @@ export class InternshipService {
       include: { criteria: { orderBy: { order: 'asc' } } },
     });
 
-    const certificate = await prisma.certificate.findUnique({ where: { internshipId: id } });
+    const certificateSummary = await certificateService.summaryForInternship(id, internship.status);
 
     // §3.7 recent activity — real events only (submissions, reviews, status
     // transitions), newest first, capped at 10. Never fabricated.
@@ -262,14 +263,10 @@ export class InternshipService {
           .map((t) => this.decorateTask(t, lockMap, resubmissionLimit)),
         rubric,
         activity,
-        certificate: certificate
-          ? { id: certificate.id, certificateNumber: certificate.certificateNumber, type: certificate.type, status: certificate.status, issuedAt: certificate.issuedAt }
-          : null,
-        // P2-09 fix: after a revocation a replacement CANNOT be issued (frozen
-        // schema, one row per internship — owner decision OD-2 pending), so
-        // advertising availability would mislead the student. Only a COMPLETED
-        // internship with no certificate row at all is truly available.
-        certificateAvailable: internship.status === 'COMPLETED' && !certificate,
+        // Current completion certificate (VALID, else latest revoked), the
+        // appreciation certificate, full history, and whether a COMPLETED
+        // internship is still awaiting a valid completion certificate.
+        ...certificateSummary,
       },
     };
   }

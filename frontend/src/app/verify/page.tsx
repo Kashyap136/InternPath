@@ -15,7 +15,7 @@ export default function VerifyPage() {
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    const trimmed = value.trim();
+    const trimmed = value.trim().toUpperCase().replace(/\s+/g, '');
     if (trimmed.length === 0) return;
     router.push(`/verify/${encodeURIComponent(trimmed)}`);
   }
@@ -33,7 +33,7 @@ export default function VerifyPage() {
             <Field
               label="Certificate number"
               htmlFor="certificate-number"
-              hint="Printed on the certificate, formatted like IP-2026-XXXXXXXXX"
+              hint="Printed on the certificate, formatted like IP-2026-XXXXXXXX (not case-sensitive)"
             >
               <TextInput
                 id="certificate-number"

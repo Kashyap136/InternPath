@@ -433,7 +433,10 @@ export interface Internship {
   /** Frozen evaluation rubric (FR-DRV-006) — served to mentor + student views. */
   rubric?: Rubric | null;
   evaluation?: Evaluation | null;
-  certificate?: { id: string; certificateNumber: string; type: string; status: string; issuedAt: string } | null;
+  /** Current completion certificate: the VALID one, else the latest revoked. */
+  certificate?: CertificateSummary | null;
+  appreciationCertificate?: CertificateSummary | null;
+  /** True while a COMPLETED internship has no VALID completion certificate. */
   certificateAvailable?: boolean;
   statusHistory?: InternshipStatusHistoryEntry[];
   /** Recent real activity (Phase 12 3.7): submissions, reviews, status events. */
@@ -511,6 +514,31 @@ export interface Evaluation {
 export type CertificateType = 'COMPLETION' | 'APPRECIATION';
 export type CertificateStatus = 'VALID' | 'REVOKED';
 
+export interface CertificateSummary {
+  id: string;
+  certificateNumber: string;
+  type: CertificateType;
+  status: CertificateStatus;
+  issuedAt: string;
+}
+
+/** A COMPLETED internship awaiting a certificate (admin issuance worklist). */
+export interface EligibleInternship {
+  id: string;
+  completedAt: string | null;
+  user: { id: string; fullName: string; email: string };
+  program: { title: string; domain?: { name: string } };
+  project: { title: string } | null;
+  finalScore: number | null;
+  recommendation: string | null;
+  canIssueCompletion: boolean;
+  canIssueAppreciation: boolean;
+  /** Meets BR-031 on evaluation alone (issuable once a completion certificate is valid). */
+  appreciationQualified: boolean;
+  /** Number of a revoked completion certificate awaiting reissue, if any. */
+  revokedCompletion: string | null;
+}
+
 export interface Certificate {
   id: string;
   certificateNumber: string;
@@ -520,6 +548,7 @@ export interface Certificate {
   issuedAt: string;
   revokedAt: string | null;
   revocationReason: string | null;
+  replacesCertificate?: string | null;
   internship?: {
     id: string;
     status: InternshipStatus;
@@ -536,6 +565,7 @@ export interface CertificateVerification {
   status: 'VALID' | 'REVOKED' | 'NOT_FOUND';
   certificateNumber: string;
   certificate?: {
+    type: CertificateType;
     recipientName: string;
     programTitle: string;
     domainName: string;
@@ -545,7 +575,10 @@ export interface CertificateVerification {
     internshipCompletion: string | null;
     issuedAt: string;
     issuedByRole: string;
+    revokedAt: string | null;
     revocationNote: string | null;
+    /** VALID certificate that replaced this revoked one, if reissued. */
+    replacedBy: string | null;
   };
 }
 

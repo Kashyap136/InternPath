@@ -1,4 +1,3 @@
-// Certificate Validation (Sprint 5 — FR-CAND-087-092)
 import { z } from 'zod';
 
 const cuid = z.string().cuid();
@@ -8,6 +7,12 @@ export const issueCertificateSchema = z.object({
     internshipId: cuid,
     type: z.enum(['COMPLETION', 'APPRECIATION']).default('COMPLETION'),
     remarks: z.string().max(1000).optional(),
+  }),
+});
+
+export const issuePendingSchema = z.object({
+  body: z.object({
+    includeAppreciation: z.boolean().default(true),
   }),
 });
 
@@ -24,7 +29,7 @@ export const revokeCertificateSchema = z.object({
 
 export const verifyParams = z.object({
   params: z.object({
-    certificateNumber: z.string().min(6).max(40),
+    certificateNumber: z.string().trim().min(6).max(40),
   }),
 });
 
@@ -32,6 +37,7 @@ export const listCertificatesQuery = z.object({
   query: z.object({
     type: z.enum(['COMPLETION', 'APPRECIATION']).optional(),
     status: z.enum(['VALID', 'REVOKED']).optional(),
+    search: z.string().max(100).optional(),
     page: z.coerce.number().int().min(1).optional(),
     limit: z.coerce.number().int().min(1).max(100).optional(),
   }),

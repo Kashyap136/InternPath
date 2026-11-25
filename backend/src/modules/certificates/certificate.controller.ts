@@ -1,5 +1,3 @@
-﻿// Certificate Controller (Sprint 5)
-
 import type { Request, Response } from 'express';
 import { asyncHandler } from '../../shared/middleware/errorHandler';
 import { certificateService } from './certificate.service';
@@ -21,10 +19,16 @@ export const adminListCertificates = asyncHandler(async (req: Request, res: Resp
   const result = await certificateService.adminList({
     type: req.query.type as string | undefined,
     status: req.query.status as string | undefined,
+    search: req.query.search as string | undefined,
     page: req.query.page ? Number(req.query.page) : undefined,
     limit: req.query.limit ? Number(req.query.limit) : undefined,
   });
   res.json(result);
+});
+
+/** COMPLETED internships still awaiting a certificate (incl. older completions). */
+export const listEligibleInternships = asyncHandler(async (_req: Request, res: Response) => {
+  res.json(await certificateService.eligible());
 });
 
 export const issueCertificate = asyncHandler(async (req: Request, res: Response) => {
@@ -35,6 +39,16 @@ export const issueCertificate = asyncHandler(async (req: Request, res: Response)
   };
   const certificate = await certificateService.issue(req.user!.id, internshipId, type, remarks);
   res.status(201).json({ data: certificate, message: `Certificate ${certificate.certificateNumber} issued` });
+});
+
+/** Backfill: issue every pending certificate in one action. */
+export const issuePendingCertificates = asyncHandler(async (req: Request, res: Response) => {
+  const { includeAppreciation } = req.body as { includeAppreciation: boolean };
+  const result = await certificateService.issuePending(req.user!.id, includeAppreciation);
+  res.json({
+    data: result,
+    message: `${result.issued.length} certificate(s) issued${result.failed.length ? `, ${result.failed.length} failed` : ''}`,
+  });
 });
 
 export const revokeCertificate = asyncHandler(async (req: Request, res: Response) => {
@@ -48,12 +62,14 @@ export const downloadCertificate = asyncHandler(async (req: Request, res: Respon
   await certificateService.downloadFor(req.user!.id, req.user!.role, req.params.id as string, res);
 });
 
-/** FR-091: PUBLIC verification â€” no authentication required. */
+/** FR-091: PUBLIC verification — no authentication required. */
 export const verifyCertificate = asyncHandler(async (req: Request, res: Response) => {
   const result = await certificateService.verify(req.params.certificateNumber as string);
   if (!result.found) {
-    res.json({ data: { status: 'NOT_FOUND', certificateNumber: req.params.certificateNumber as string } });
+    res.json({ data: { status: 'NOT_FOUND', certificateNumber: result.certificateNumber } });
     return;
   }
-  res.json({ data: { status: result.data.status, certificate: result.data } });
+  res.json({
+    data: { status: result.data.status, certificateNumber: result.data.certificateNumber, certificate: result.data },
+  });
 });

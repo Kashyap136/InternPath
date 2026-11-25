@@ -1,10 +1,10 @@
-﻿// Admin Platform Module (Sprint 6 â€” FR-CAND-105/106/107)
+// Admin Platform Module (Sprint 6 — FR-CAND-105/106/107)
 //
 // - Settings API: view/change configurable platform parameters (validated,
 //   audited via setSetting).
 // - Dashboard: aggregate counts for the admin overview.
 // - Audit view: read-only, filterable audit log (no modify/delete exists by
-//   design â€” FR-105).
+//   design — FR-105).
 
 import type { Request, Response } from 'express';
 import { Router } from 'express';
@@ -122,7 +122,7 @@ export const getAdminDashboard = asyncHandler(async (_req: Request, res: Respons
   });
 });
 
-// ---- Audit view (FR-105 â€” read-only) ----
+// ---- Audit view (FR-105 — read-only) ----
 
 const auditQuery = z.object({
   query: z.object({

@@ -7,6 +7,7 @@
 // or review content is ever returned by the API or rendered here.
 
 import { use, useState } from 'react';
+import Link from 'next/link';
 import {
   Alert,
   Button,
@@ -76,11 +77,18 @@ export default function VerifyResultPage({ params }: { params: Promise<{ number:
         {!loading && !error && data && data.certificate && (
           <Panel>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-serif text-xl font-semibold text-ink">
-                {data.certificate.recipientName}
-              </h2>
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                  {data.certificate.type === 'APPRECIATION'
+                    ? 'Certificate of Appreciation'
+                    : 'Certificate of Completion'}
+                </p>
+                <h2 className="break-words font-serif text-xl font-semibold text-ink">
+                  {data.certificate.recipientName}
+                </h2>
+              </div>
               <StatusBadge tone={data.status === 'VALID' ? 'success' : 'danger'}>
-                {data.status}
+                {data.status === 'VALID' ? 'Valid' : 'Revoked'}
               </StatusBadge>
             </div>
 
@@ -146,6 +154,19 @@ export default function VerifyResultPage({ params }: { params: Promise<{ number:
               <div className="mt-4">
                 <Alert variant="error" title="Revoked">
                   {data.certificate.revocationNote}
+                  {data.certificate.revokedAt ? ` Revoked on ${formatDate(data.certificate.revokedAt)}.` : ''}
+                  {data.certificate.replacedBy && (
+                    <>
+                      {' '}It was replaced by certificate{' '}
+                      <Link
+                        href={`/verify/${encodeURIComponent(data.certificate.replacedBy)}`}
+                        className="font-mono font-semibold underline"
+                      >
+                        {data.certificate.replacedBy}
+                      </Link>
+                      .
+                    </>
+                  )}
                 </Alert>
               </div>
             )}

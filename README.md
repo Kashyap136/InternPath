@@ -230,7 +230,6 @@ Before going live:
 
 ## Roadmap
 
-- Appreciation certificates alongside completion certificates (currently limited to one certificate per internship by the data model)
 - Admin-editable evaluation rubrics (a default weighted rubric ships with the migrations)
 - Configurable re-application policy for programs
 

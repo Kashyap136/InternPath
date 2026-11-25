@@ -744,7 +744,12 @@ model Certificate {
   certificateNumber   String   @unique
   type                CertificateType
   status              CertificateStatus @default(VALID)
-  internshipId        String   @unique
+  // Not unique: an internship may hold a COMPLETION and an APPRECIATION
+  // certificate, plus revoked predecessors of reissued ones. At most one VALID
+  // certificate per (internshipId, type) is enforced by the partial unique
+  // index "Certificate_internshipId_type_valid_key" (raw SQL in migration
+  // 20261125000000_certificate_reissue — Prisma cannot express partial indexes).
+  internshipId        String
   internship          Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
   issuedAt            DateTime
   issuedBy            String
@@ -756,6 +761,7 @@ model Certificate {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  @@index([internshipId, type])
   @@index([issuedBy])
   @@index([status])
 }

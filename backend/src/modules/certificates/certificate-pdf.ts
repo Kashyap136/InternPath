@@ -1,14 +1,3 @@
-﻿// Certificate PDF Renderer (Sprint 5 â€” FR-CAND-089, FR-DRV-009)
-//
-// Renders the downloadable certificate document ON DEMAND as an in-memory
-// Buffer â€” nothing is written to disk or the database (FR-DRV-009).
-//
-// Honesty constraints (Phase 10 Â§6.2): the document records exactly what the
-// platform can establish â€” completion of the described internship within
-// InternPath. It deliberately contains NO accreditation, university
-// affiliation, government recognition, partnership or endorsement claims, and
-// no signature images (a typed issuer line is the approval representation).
-
 import PDFDocument from 'pdfkit';
 import path from 'node:path';
 
@@ -26,6 +15,8 @@ export interface CertificatePdfData {
   issuedAt: Date;
   issuerName: string;
   issuerRole: string;
+  /** Absolute public verification link printed on the document. */
+  verifyUrl: string;
 }
 
 const IVORY = '#F7F4EE';
@@ -49,7 +40,7 @@ export function renderCertificatePdf(data: CertificatePdfData): Promise<Buffer> 
   return new Promise((resolve, reject) => {
     // A4 landscape
     const doc = new PDFDocument({ layout: 'landscape', size: 'A4', margin: 0, info: {
-      Title: `InternPath ${data.type === 'COMPLETION' ? 'Certificate of Completion' : 'Appreciation Certificate'} â€” ${data.certificateNumber}`,
+      Title: `InternPath ${data.type === 'COMPLETION' ? 'Certificate of Completion' : 'Certificate of Appreciation'} — ${data.certificateNumber}`,
       Author: 'InternPath',
     } });
 
@@ -72,7 +63,7 @@ export function renderCertificatePdf(data: CertificatePdfData): Promise<Buffer> 
     doc.moveTo(W / 2 - 120, 56).lineTo(W / 2 + 120, 56).lineWidth(1.5).strokeColor('#D6B15E').stroke();
     doc.moveTo(W / 2 - 120, H - 56).lineTo(W / 2 + 120, H - 56).lineWidth(1.5).strokeColor('#D6B15E').stroke();
 
-    // Official logo mark (top centre) â€” owner-supplied asset, undistorted
+    // Official logo mark (top centre) — owner-supplied asset, undistorted
     try {
       // Resolved from this module (backend/{src|dist}/modules/certificates),
       // not process.cwd(): hosted starts run from the repository root.
@@ -89,7 +80,7 @@ export function renderCertificatePdf(data: CertificatePdfData): Promise<Buffer> 
       .text(data.type === 'COMPLETION' ? 'Certificate of Completion' : 'Certificate of Appreciation', 0, y, { width: W, align: 'center' });
     y += 34;
     doc.font('Helvetica').fontSize(10.5).fillColor(SECONDARY)
-      .text('InternPath â€” Project-Based Internships', 0, y, { width: W, align: 'center' });
+      .text('InternPath — Project-Based Internships', 0, y, { width: W, align: 'center' });
     y += 30;
 
     // Award line
@@ -105,7 +96,10 @@ export function renderCertificatePdf(data: CertificatePdfData): Promise<Buffer> 
     y += 18;
 
     // Body
-    const programLine = `for successfully completing the project-based internship "${data.programTitle}"`;
+    const programLine =
+      data.type === 'APPRECIATION'
+        ? `in recognition of outstanding performance in the project-based internship "${data.programTitle}"`
+        : `for successfully completing the project-based internship "${data.programTitle}"`;
     doc.font('Helvetica').fontSize(11.5).fillColor(INK)
       .text(programLine, 72, y, { width: W - 144, align: 'center' });
     y += 18;
@@ -117,13 +111,13 @@ export function renderCertificatePdf(data: CertificatePdfData): Promise<Buffer> 
     y += 22;
 
     const periodLine = `Internship period: ${formatDate(data.internshipStart)}` +
-      (data.internshipCompletion ? ` â€” completed ${formatDate(data.internshipCompletion)}` : '') +
-      ` Â· Issued ${formatDate(data.issuedAt)}`;
+      (data.internshipCompletion ? ` — completed ${formatDate(data.internshipCompletion)}` : '') +
+      ` · Issued ${formatDate(data.issuedAt)}`;
     doc.font('Helvetica').fontSize(10.5).fillColor(SECONDARY)
       .text(periodLine, 0, y, { width: W, align: 'center' });
     y += 34;
 
-    // Approval representation â€” typed issuer line (no signature images)
+    // Approval representation — typed issuer line (no signature images)
     doc.font('Helvetica-Bold').fontSize(11).fillColor(DEEP_GREEN)
       .text(data.issuerName, W - 300, y, { width: 250, align: 'center' });
     doc.font('Helvetica').fontSize(9.5).fillColor(SECONDARY)
@@ -133,7 +127,9 @@ export function renderCertificatePdf(data: CertificatePdfData): Promise<Buffer> 
     doc.font('Helvetica-Bold').fontSize(10).fillColor(FOREST)
       .text(`Certificate No. ${data.certificateNumber}`, 60, y, { width: 280, align: 'center' });
     doc.font('Helvetica').fontSize(8.5).fillColor(SECONDARY)
-      .text('Verify this certificate at /verify on the InternPath platform.', 60, y + 14, { width: 280, align: 'center' });
+      .text('Verify this certificate at:', 60, y + 14, { width: 280, align: 'center' });
+    doc.font('Helvetica').fontSize(8.5).fillColor(FOREST)
+      .text(data.verifyUrl, 60, y + 26, { width: 280, align: 'center', link: data.verifyUrl, underline: true });
 
     // Honest scope statement (bottom centre)
     doc.font('Helvetica-Oblique').fontSize(8).fillColor(SECONDARY)
@@ -145,8 +141,8 @@ export function renderCertificatePdf(data: CertificatePdfData): Promise<Buffer> 
     // Revocation watermark (applies to re-issued prints of revoked records)
     if (data.status === 'REVOKED') {
       doc.save();
-      doc.rotate(-Math.PI / 10, { origin: [W / 2, H / 2] });
-      doc.font('Helvetica-Bold').fontSize(64).fillColor('rgba(112, 47, 69, 0.14)')
+      doc.rotate(-18, { origin: [W / 2, H / 2] }); // PDFKit takes degrees
+      doc.font('Helvetica-Bold').fontSize(64).fillColor('#702F45', 0.14)
         .text('REVOKED', 0, H / 2 - 40, { width: W, align: 'center' });
       doc.restore();
     }

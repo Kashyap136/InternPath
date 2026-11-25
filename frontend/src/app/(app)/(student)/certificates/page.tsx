@@ -7,6 +7,7 @@
 import {
   Alert,
   Button,
+  ButtonLink,
   EmptyState,
   ErrorState,
   LoadingState,
@@ -78,7 +79,9 @@ export default function CertificatesPage() {
                     </StatusBadge>
                   </div>
                   <p className="mt-1 text-sm text-secondary">
-                    {certificate.certificateNumber} · Issued {formatDate(certificate.issuedAt)}
+                    {certificate.type === 'APPRECIATION' ? 'Certificate of appreciation' : 'Certificate of completion'} ·{' '}
+                    <span className="font-mono">{certificate.certificateNumber}</span> · Issued{' '}
+                    {formatDate(certificate.issuedAt)}
                     {certificate.internship?.project ? ` · ${certificate.internship.project.title}` : ''}
                   </p>
                   {certificate.status === 'REVOKED' && certificate.revocationReason && (
@@ -89,16 +92,37 @@ export default function CertificatesPage() {
                     </div>
                   )}
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="shrink-0"
-                  onClick={() =>
-                    window.open(`/api/backend/api/certificates/${certificate.id}/download`, '_blank')
-                  }
-                >
-                  Download PDF
-                </Button>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {certificate.status === 'VALID' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      title="Copy the public verification link to share with employers"
+                      onClick={() => {
+                        const url = `${window.location.origin}/verify/${encodeURIComponent(certificate.certificateNumber)}`;
+                        void navigator.clipboard?.writeText(url);
+                      }}
+                    >
+                      Copy verify link
+                    </Button>
+                  )}
+                  <ButtonLink
+                    href={`/verify/${encodeURIComponent(certificate.certificateNumber)}`}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    Verify
+                  </ButtonLink>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      window.open(`/api/backend/api/certificates/${certificate.id}/download`, '_blank')
+                    }
+                  >
+                    Download PDF
+                  </Button>
+                </div>
               </div>
             </Panel>
           ))}
