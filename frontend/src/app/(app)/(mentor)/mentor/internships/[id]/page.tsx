@@ -3,7 +3,8 @@
 // Mentor internship detail (Sprint 4 — FR-CAND-059/067-074): review task
 // instances (approve / request changes with mandatory feedback), adjust due
 // dates with a reason, and submit the final evaluation while
-// UNDER_EVALUATION. The internship is 404-guarded server-side to assignment.
+// UNDER_EVALUATION. The internship is 404-guarded server-side to assignment;
+// administrators can open and act on every internship from the same page.
 
 import { use, useState } from 'react';
 import {
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useApiLoad } from '@/lib/use-async';
+import { useAuth } from '@/lib/auth-context';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { parseApiError } from '@/lib/form-errors';
 import {
@@ -39,6 +41,8 @@ export default function MentorInternshipDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const { data, error, loading, reload } = useApiLoad<Internship>(() =>
     api.get<{ data: Internship }>(`/api/mentor/internships/${id}`).then((r) => r.data)
   );
@@ -141,7 +145,10 @@ export default function MentorInternshipDetailPage({
     <div className="space-y-6">
       <PageHeader
         title={internship.program?.title ?? 'Internship'}
-        subtitle={`${internship.intern ? `Intern: ${internship.intern.fullName} · ` : ''}${formatDate(
+        eyebrow={isAdmin ? 'Supervising as administrator' : undefined}
+        subtitle={`${internship.intern ? `Intern: ${internship.intern.fullName} · ` : ''}${
+          isAdmin && internship.mentor ? `Mentor: ${internship.mentor.fullName} · ` : ''
+        }${formatDate(
           internship.startDate
         )} – ${formatDate(internship.endDate)}${internship.project ? ` · ${internship.project.title}` : ''}`}
         actions={

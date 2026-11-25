@@ -50,7 +50,7 @@ export function MentorProfileView() {
         subtitle="This summary and capacity are used when administrators assign interns."
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px] lg:gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px] lg:gap-6">
         {/* Form column */}
         <div className="lg:col-span-1">
           <MentorProfileForm initial={profile} onSaved={setProfile} />

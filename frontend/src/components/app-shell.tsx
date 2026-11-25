@@ -118,6 +118,16 @@ export const navGroups: Record<Role, NavGroup[]> = {
       ],
     },
     {
+      // Everything a mentor can do, across every internship.
+      label: 'Supervision',
+      links: [
+        { href: '/mentor/review-queue', label: 'Review queue' },
+        { href: '/mentor/internships', label: 'Task reviews & evaluation' },
+        { href: '/mentor/projects', label: 'Project authoring' },
+        { href: '/projects', label: 'Project repository' },
+      ],
+    },
+    {
       label: 'Operations',
       links: [
         { href: '/admin/internships', label: 'Internships' },
@@ -295,7 +305,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
           <div className="flex min-w-0 items-center gap-3">
             <div className="lg:hidden">
-              <Wordmark href="/dashboard" />
+              <Wordmark href="/dashboard" compact />
             </div>
             {here && (
               <nav aria-label="Breadcrumb" className="hidden min-w-0 lg:block">

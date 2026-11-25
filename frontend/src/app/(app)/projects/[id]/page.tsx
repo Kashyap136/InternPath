@@ -46,7 +46,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Panel>
           <h2 className="font-serif text-base font-semibold text-ink">Problem statement</h2>
           <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-body">

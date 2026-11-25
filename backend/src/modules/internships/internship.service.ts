@@ -17,6 +17,7 @@ import { createAuditLog, AuditAction } from '../../shared/utils/audit';
 import { notify } from '../notifications/notification.service';
 import { calculateInternshipProgress } from './internship-progress';
 import type { Prisma } from '@prisma/client';
+import { canSupervise, type Supervisor } from './internship.types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -534,22 +535,25 @@ export class InternshipService {
   }
 
   // ============================================================
-  // Mentor operations — assigned internships only (SRS §18)
+  // Mentor operations — assigned internships only (SRS §18). Administrators
+  // use the same surface with access to every internship.
   // ============================================================
 
-  private async getAssignedInternshipOr404(mentorId: string, internshipId: string) {
+  private async getAssignedInternshipOr404(supervisor: Supervisor, internshipId: string) {
     const internship = await this.getInternshipOr404(internshipId);
-    if (internship.mentorId !== mentorId) {
+    if (!canSupervise(supervisor, internship.mentorId)) {
       // 404: existence of other mentors' internships is not disclosed
       throw new AppError('Internship not found', 404, 'INTERNSHIP_NOT_FOUND');
     }
     return internship;
   }
 
-  async listAssigned(mentorId: string, query: { status?: string; page?: number; limit?: number }) {
+  async listAssigned(supervisor: Supervisor, query: { status?: string; page?: number; limit?: number }) {
     const page = query.page ?? 1;
     const limit = Math.min(query.limit ?? 20, 100);
-    const where: Record<string, unknown> = { mentorId };
+    // Admins see every internship that has a mentor (the supervised ones).
+    const where: Record<string, unknown> =
+      supervisor.role === 'ADMIN' ? { mentorId: { not: null } } : { mentorId: supervisor.id };
     if (query.status) where.status = query.status;
 
     const [rows, total] = await Promise.all([
@@ -562,6 +566,7 @@ export class InternshipService {
           program: { include: { domain: { select: { id: true, name: true } } } },
           project: { select: { id: true, title: true, sourceType: true } },
           user: { select: { id: true, fullName: true } },
+          mentor: { select: { id: true, fullName: true } },
           evaluation: { select: { finalScore: true, recommendation: true, submittedAt: true } },
           tasks: { select: { id: true, title: true, status: true, isMandatory: true, dueDate: true, internMilestoneId: true } },
           milestones: { select: { id: true, title: true, order: true, isRequired: true } },
@@ -573,14 +578,15 @@ export class InternshipService {
     return {
       data: rows.map((row) => {
         const { tasks, milestones, ...internship } = row;
-        return { ...internship, progress: this.progressSummary(tasks, milestones) };
+        // `intern` is the name the mentor/admin views read (as on getAssigned).
+        return { ...internship, intern: internship.user, progress: this.progressSummary(tasks, milestones) };
       }),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
     };
   }
 
-  async getAssigned(mentorId: string, internshipId: string) {
-    const internship = await this.getAssignedInternshipOr404(mentorId, internshipId);
+  async getAssigned(supervisor: Supervisor, internshipId: string) {
+    const internship = await this.getAssignedInternshipOr404(supervisor, internshipId);
     const { tasks, milestones, lockMap, resubmissionLimit } = await this.loadTasksWithLocks(internshipId);
     const progress = this.progressSummary(tasks, milestones);
 
@@ -617,7 +623,7 @@ export class InternshipService {
   }
 
   /** FR-067: pending submissions for this mentor's interns, oldest first, with waiting time. */
-  async reviewQueue(mentorId: string) {
+  async reviewQueue(supervisor: Supervisor) {
     const reviewPeriodDays = await getSetting<number>('reviewPeriodDays');
 
     // Only submissions still awaiting a decision: a version that already has
@@ -628,7 +634,8 @@ export class InternshipService {
       where: {
         review: { is: null },
         internTask: {
-          internship: { mentorId },
+          internship:
+            supervisor.role === 'ADMIN' ? { mentorId: { not: null } } : { mentorId: supervisor.id },
           status: { in: ['SUBMITTED', 'RESUBMITTED', 'UNDER_REVIEW'] },
         },
       },
@@ -644,6 +651,7 @@ export class InternshipService {
               select: {
                 id: true,
                 user: { select: { id: true, fullName: true } },
+                mentor: { select: { id: true, fullName: true } },
                 program: { select: { title: true } },
               },
             },
@@ -671,6 +679,7 @@ export class InternshipService {
           status: s.internTask.status,
         },
         intern: s.internTask.internship.user,
+        mentor: s.internTask.internship.mentor,
         program: s.internTask.internship.program,
         internshipId: s.internTask.internship.id,
         submittedAt: s.submittedAt,
@@ -681,14 +690,14 @@ export class InternshipService {
     };
   }
 
-  /** Move a submitted/resubmitted task to UNDER_REVIEW (mentor-only). */
-  async startReview(mentorId: string, internTaskId: string) {
+  /** Move a submitted/resubmitted task to UNDER_REVIEW (assigned mentor or admin). */
+  async startReview(supervisor: Supervisor, internTaskId: string) {
     const task = await prisma.internTask.findUnique({
       where: { id: internTaskId },
       include: { internship: { select: { mentorId: true, status: true } } },
     });
     if (!task) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
-    if (task.internship.mentorId !== mentorId) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
+    if (!canSupervise(supervisor, task.internship.mentorId)) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
     if (task.internship.status !== 'ACTIVE') {
       throw new AppError('Reviews are only possible while the internship is ACTIVE', 400, 'INTERNSHIP_NOT_ACTIVE');
     }
@@ -703,7 +712,7 @@ export class InternshipService {
    * FR-068/069: approve a submission version or request changes (comment
    * mandatory for changes). Decision applies to the LATEST version.
    */
-  async decideSubmission(mentorId: string, internTaskId: string, decision: 'APPROVED' | 'CHANGES_REQUESTED', comment: string) {
+  async decideSubmission(supervisor: Supervisor, internTaskId: string, decision: 'APPROVED' | 'CHANGES_REQUESTED', comment: string) {
     if (decision === 'CHANGES_REQUESTED' && !comment.trim()) {
       throw new AppError('A feedback comment is mandatory when requesting changes', 400, 'COMMENTS_REQUIRED');
     }
@@ -716,7 +725,7 @@ export class InternshipService {
       },
     });
     if (!task) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
-    if (task.internship.mentorId !== mentorId) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
+    if (!canSupervise(supervisor, task.internship.mentorId)) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
     if (task.internship.status !== 'ACTIVE') {
       throw new AppError('Reviews are only possible while the internship is ACTIVE', 400, 'INTERNSHIP_NOT_ACTIVE');
     }
@@ -736,7 +745,7 @@ export class InternshipService {
           submissionId: latest.id,
           decision,
           comment,
-          reviewedBy: mentorId,
+          reviewedBy: supervisor.id,
         },
       }),
       prisma.internTask.update({
@@ -826,7 +835,7 @@ export class InternshipService {
    * task was approved, it is returned to ACTIVE (SRS allows the demotion with
    * a recorded reason) so the resubmission cycle can run.
    */
-  async reopenApprovedTask(mentorId: string, internTaskId: string, reason: string) {
+  async reopenApprovedTask(supervisor: Supervisor, internTaskId: string, reason: string) {
     const task = await prisma.internTask.findUnique({
       where: { id: internTaskId },
       include: {
@@ -834,7 +843,7 @@ export class InternshipService {
       },
     });
     if (!task) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
-    if (task.internship.mentorId !== mentorId) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
+    if (!canSupervise(supervisor, task.internship.mentorId)) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
     if (task.status !== 'APPROVED') {
       throw new AppError('Only an APPROVED task can be reopened', 400, 'TASK_NOT_APPROVED');
     }
@@ -876,8 +885,8 @@ export class InternshipService {
             internshipId: task.internshipId,
             fromStatus: 'UNDER_EVALUATION',
             toStatus: 'ACTIVE',
-            changedBy: mentorId,
-            reason: `Task "${task.title}" reopened by the mentor: ${reason}. The prior evaluation was invalidated and must be re-submitted.`,
+            changedBy: supervisor.id,
+            reason: `Task "${task.title}" reopened by ${supervisor.role === 'ADMIN' ? 'an administrator' : 'the mentor'}: ${reason}. The prior evaluation was invalidated and must be re-submitted.`,
           },
         });
       }
@@ -886,7 +895,7 @@ export class InternshipService {
     });
 
     await createAuditLog({
-      actorId: mentorId,
+      actorId: supervisor.id,
       action: AuditAction.TASK_REOPENED,
       entityType: 'InternTask',
       entityId: internTaskId,
@@ -897,7 +906,7 @@ export class InternshipService {
 
     await notify(task.internship.userId, {
       type: 'TASK_REOPENED',
-      title: 'Task reopened by your mentor',
+      title: supervisor.role === 'ADMIN' ? 'Task reopened by an administrator' : 'Task reopened by your mentor',
       message: `"${task.title}" was reopened: ${reason}`,
       link: `/internships/${task.internshipId}`,
     });
@@ -905,14 +914,14 @@ export class InternshipService {
     return updatedTask;
   }
 
-  /** FR-059: assigned mentor changes a task due date, reason mandatory. */
-  async changeDueDate(mentorId: string, internTaskId: string, dueDate: Date, reason: string) {
+  /** FR-059: assigned mentor (or an admin) changes a task due date, reason mandatory. */
+  async changeDueDate(supervisor: Supervisor, internTaskId: string, dueDate: Date, reason: string) {
     const task = await prisma.internTask.findUnique({
       where: { id: internTaskId },
       include: { internship: { select: { mentorId: true, status: true, userId: true } } },
     });
     if (!task) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
-    if (task.internship.mentorId !== mentorId) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
+    if (!canSupervise(supervisor, task.internship.mentorId)) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
     if (['COMPLETED', 'WITHDRAWN', 'TERMINATED'].includes(task.internship.status)) {
       throw new AppError('Due dates cannot change on a finished internship', 400, 'INTERNSHIP_FINISHED');
     }
@@ -926,7 +935,7 @@ export class InternshipService {
     });
 
     await createAuditLog({
-      actorId: mentorId,
+      actorId: supervisor.id,
       action: AuditAction.TASK_DUE_DATE_CHANGED,
       entityType: 'InternTask',
       entityId: internTaskId,

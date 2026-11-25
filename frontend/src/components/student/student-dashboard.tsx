@@ -217,14 +217,14 @@ export function StudentView({ user }: { user: AuthUser }) {
 
       {current && <CurrentInternshipCard internship={current} />}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-4 lg:gap-4">
         <StatCard label="Open applications" value={openApps.length} hint={`${applications.length} in total`} href="/applications" icon={InboxIcon} />
         <StatCard label="Waiting for review" value={current?.progress?.pendingReviewCount ?? 0} hint="Submitted tasks" href={current ? `/internships/${current.id}` : '/internships'} icon={ClockIcon} tone="accent" />
         <StatCard label="Changes requested" value={current?.progress?.changesRequestedCount ?? 0} hint="Feedback to act on" href={current ? `/internships/${current.id}` : '/internships'} icon={ClipboardCheckIcon} tone="wine" />
         <StatCard label="Completed internships" value={completed} hint="With certificates" href="/certificates" icon={GraduationCapIcon} tone="purple" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3 lg:items-start lg:gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-start lg:gap-6">
         <div className="min-w-0 space-y-4 lg:col-span-2 lg:space-y-6">
           {!current && <PathwaySteps profileComplete={complete} hasApplication={applications.length > 0} />}
 

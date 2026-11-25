@@ -10,8 +10,9 @@ export default function AdminApplicationsPage() {
     <ApplicationReviewList
       apiBase="/api/admin/applications"
       detailBase="/admin/applications"
-      subtitle="Review every student application and record an approve or reject decision."
+      subtitle="Review every submitted application across all programs and record an approve or reject decision — the same review mentors do in their domains."
       emptyDescription="Applications appear here once students submit them."
+      allowDrafts
     />
   );
 }

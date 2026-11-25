@@ -190,6 +190,21 @@ export interface Application {
   submittedAt?: string | null;
   /** Admin review surfaces include the applicant's account record. */
   user?: { id: string; fullName: string; email: string };
+  /** Student GET of a DRAFT: the server-side submission gates, unthrown. */
+  readiness?: ApplicationReadiness | null;
+}
+
+export interface ApplicationReadiness {
+  ready: boolean;
+  programOpen: boolean;
+  deadlineOpen: boolean;
+  profileComplete: boolean;
+  assessmentTaken: boolean;
+  assessmentPassed: boolean;
+  levelMet: boolean;
+  resultLevel: AssessmentResultLevel | null;
+  requiredLevel: string;
+  domainId: string;
 }
 
 /** GET /api/{admin|mentor}/applications/:id — everything needed to decide. */

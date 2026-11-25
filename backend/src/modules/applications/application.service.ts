@@ -120,7 +120,69 @@ export class ApplicationService {
       throw new AppError('Forbidden', 403, 'FORBIDDEN');
     }
 
-    return application;
+    // Drafts carry the same checks `submit` enforces, so the student sees
+    // what is still blocking submission before pressing the button.
+    const readiness =
+      application.status === 'DRAFT'
+        ? await this.submissionReadiness(userId, application.program)
+        : null;
+
+    return { ...application, readiness };
+  }
+
+  /**
+   * The server-side gates for DRAFT → SUBMITTED, evaluated without throwing.
+   * `submit` uses the same evaluation so the checklist and the real
+   * transition can never disagree.
+   */
+  async submissionReadiness(
+    userId: string,
+    program: {
+      status: string;
+      applicationDeadline: Date;
+      domainId: string;
+      level: string;
+      requiredLevel: string | null;
+    }
+  ) {
+    const programOpen = program.status === 'OPEN';
+    const deadlineOpen = program.applicationDeadline > new Date();
+    const profileComplete = await isStudentProfileComplete(userId);
+
+    const eligibleAttempt = await prisma.assessmentAttempt.findFirst({
+      where: { userId, domainId: program.domainId, resultLevel: { not: 'NOT_ELIGIBLE' } },
+      orderBy: { startedAt: 'desc' },
+      select: { resultLevel: true },
+    });
+    const anyCompletedAttempt = eligibleAttempt
+      ? true
+      : (await prisma.assessmentAttempt.count({
+          where: { userId, domainId: program.domainId, submittedAt: { not: null } },
+        })) > 0;
+
+    const requiredLevel = program.requiredLevel ?? program.level;
+    const levelOrder = { BEGINNER: 1, INTERMEDIATE: 2 };
+    const studentLevelNum = eligibleAttempt
+      ? levelOrder[eligibleAttempt.resultLevel as keyof typeof levelOrder] ?? 0
+      : 0;
+    const requiredLevelNum = levelOrder[requiredLevel as keyof typeof levelOrder] ?? 1;
+
+    const assessmentPassed = Boolean(eligibleAttempt);
+    const levelMet = assessmentPassed && studentLevelNum >= requiredLevelNum;
+
+    return {
+      ready: programOpen && deadlineOpen && profileComplete && assessmentPassed && levelMet,
+      programOpen,
+      deadlineOpen,
+      profileComplete,
+      /** True when an assessment in the domain was completed (any result). */
+      assessmentTaken: anyCompletedAttempt,
+      assessmentPassed,
+      levelMet,
+      resultLevel: eligibleAttempt?.resultLevel ?? null,
+      requiredLevel,
+      domainId: program.domainId,
+    };
   }
 
   async createDraft(userId: string, data: CreateApplicationInput) {
@@ -258,37 +320,31 @@ export class ApplicationService {
       throw new AppError('Applications only accepted for OPEN programs', 400, 'PROGRAM_NOT_OPEN');
     }
 
-    // BR-CAND-001: Profile must be complete (BE-15 fix, audit 2026-10-20:
-    // uses the shared profiles helper, synchronized with the DEC-036
-    // required-fields list including declaredSkills)
-    const profileComplete = await isStudentProfileComplete(userId);
-    if (!profileComplete) {
-      throw new AppError('Student profile must be complete before applying', 400, 'PROFILE_INCOMPLETE');
+    // BR-CAND-001 (profile complete, DEC-036 required fields incl.
+    // declaredSkills) and BR-CAND-002 (a passing domain assessment at the
+    // program's required level — requiredLevel defaults to the program
+    // level). Evaluated by the same helper that feeds the draft checklist.
+    const readiness = await this.submissionReadiness(userId, application.program);
+    if (!readiness.profileComplete) {
+      throw new AppError(
+        'Complete your student profile (institution, degree, year of study, graduation year and at least one skill) before submitting.',
+        400,
+        'PROFILE_INCOMPLETE'
+      );
     }
-
-    // BR-CAND-002: Check eligibility
-    const assessment = await prisma.assessmentAttempt.findFirst({
-      where: {
-        userId,
-        domainId: application.program.domainId,
-        resultLevel: { not: 'NOT_ELIGIBLE' },
-      },
-      orderBy: { startedAt: 'desc' },
-    });
-
-    if (!assessment) {
-      throw new AppError('Must complete domain assessment before applying', 400, 'ASSESSMENT_REQUIRED');
+    if (!readiness.assessmentPassed) {
+      throw new AppError(
+        'Take and pass the assessment for this program\'s domain before submitting.',
+        400,
+        'ASSESSMENT_REQUIRED'
+      );
     }
-
-    // Check level eligibility
-    // TEMP: requiredLevel defaults to program level (per baseline)
-    const requiredLevel = application.program.requiredLevel ?? application.program.level;
-    const levelOrder = { BEGINNER: 1, INTERMEDIATE: 2 };
-    const studentLevel = levelOrder[assessment.resultLevel as keyof typeof levelOrder] ?? 0;
-    const requiredLevelNum = levelOrder[requiredLevel as keyof typeof levelOrder] ?? 1;
-
-    if (studentLevel < requiredLevelNum) {
-      throw new AppError('Does not meet program eligibility requirements', 400, 'NOT_ELIGIBLE');
+    if (!readiness.levelMet) {
+      throw new AppError(
+        `This program requires the ${readiness.requiredLevel.toLowerCase()} level; your assessment result is ${String(readiness.resultLevel).toLowerCase()}.`,
+        400,
+        'NOT_ELIGIBLE'
+      );
     }
 
     // Audit 2026-10-20 divergence resolved: the submit-time seat check was
@@ -624,16 +680,18 @@ export class ApplicationService {
     const { status, programId, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.ApplicationWhereInput = {};
-    if (status) where.status = status;
+    // Unfiltered lists are the review queue: drafts are not submitted yet, so
+    // they stay out of it (listing them beside real submissions made unsent
+    // drafts look like applications that had reached review). Admins can
+    // still ask for status=DRAFT explicitly.
+    const where: Prisma.ApplicationWhereInput = { status: status ?? { not: 'DRAFT' } };
     if (programId) where.programId = programId;
 
     const domainIds = await this.reviewerDomainIds(reviewer);
     if (domainIds !== null) {
       // Mentors: own domains only, and never another student's draft.
       where.program = { domainId: { in: domainIds } };
-      if (!status) where.status = { not: 'DRAFT' };
-      else if (status === 'DRAFT') where.id = { in: [] };
+      if (status === 'DRAFT') where.id = { in: [] };
     }
 
     const [data, total] = await Promise.all([

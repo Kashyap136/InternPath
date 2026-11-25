@@ -57,7 +57,7 @@ export const APPLICATION_STATUS_TONE: Record<
 };
 
 const STATUS_FILTERS: Array<{ value: '' | ApplicationStatus; label: string }> = [
-  { value: '', label: 'All' },
+  { value: '', label: 'All submitted' },
   { value: 'SUBMITTED', label: 'Submitted' },
   { value: 'UNDER_REVIEW', label: 'Under review' },
   { value: 'APPROVED', label: 'Approved' },
@@ -65,6 +65,10 @@ const STATUS_FILTERS: Array<{ value: '' | ApplicationStatus; label: string }> = 
   { value: 'ACCEPTED', label: 'Accepted' },
   { value: 'WITHDRAWN', label: 'Withdrawn' },
 ];
+
+// Admin-only: drafts are never part of the review queue (the API leaves them
+// out unless asked), but administrators can look them up explicitly.
+const DRAFT_FILTER = { value: 'DRAFT' as const, label: 'Drafts (not submitted)' };
 
 const isPending = (status: ApplicationStatus) =>
   status === 'SUBMITTED' || status === 'UNDER_REVIEW';
@@ -78,6 +82,7 @@ export function ApplicationReviewList({
   detailBase,
   subtitle,
   emptyDescription,
+  allowDrafts = false,
 }: {
   /** '/api/admin/applications' or '/api/mentor/applications' */
   apiBase: string;
@@ -85,7 +90,10 @@ export function ApplicationReviewList({
   detailBase: string;
   subtitle: string;
   emptyDescription: string;
+  /** Offer the admin-only "Drafts (not submitted)" filter. */
+  allowDrafts?: boolean;
 }) {
+  const filters = allowDrafts ? [...STATUS_FILTERS, DRAFT_FILTER] : STATUS_FILTERS;
   const [filter, setFilter] = useState<'' | ApplicationStatus>('');
 
   const applications = useApiLoad<PaginatedResponse<Application>>(
@@ -104,7 +112,13 @@ export function ApplicationReviewList({
       <PageHeader title="Applications" subtitle={subtitle} />
 
       <Panel
-        title={filter ? APPLICATION_STATUS_LABEL[filter] : 'All applications'}
+        title={
+          filter === 'DRAFT'
+            ? 'Drafts — not submitted by the student yet'
+            : filter
+              ? APPLICATION_STATUS_LABEL[filter]
+              : 'All submitted applications'
+        }
         subtitle={
           !filter && !applications.loading && pendingCount > 0
             ? `${pendingCount} waiting for a decision`
@@ -117,7 +131,7 @@ export function ApplicationReviewList({
               value={filter}
               onChange={(e) => setFilter(e.target.value as '' | ApplicationStatus)}
             >
-              {STATUS_FILTERS.map((f) => (
+              {filters.map((f) => (
                 <option key={f.label} value={f.value}>
                   {f.label}
                 </option>
@@ -135,13 +149,15 @@ export function ApplicationReviewList({
             bordered={false}
             icon={InboxIcon}
             title="No applications"
-            description={emptyDescription}
+            description={
+              filter === 'DRAFT' ? 'No students have unsent drafts right now.' : emptyDescription
+            }
           />
         ) : (
           <ul className="divide-y divide-line">
             {rows.map((application) => (
               <li key={application.id} className="py-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge tone={APPLICATION_STATUS_TONE[application.status]}>
@@ -166,6 +182,7 @@ export function ApplicationReviewList({
                   </div>
                   <ButtonLink
                     href={`${detailBase}/${application.id}`}
+                    className="self-start sm:self-center"
                     size="sm"
                     variant={isPending(application.status) ? 'primary' : 'secondary'}
                   >
@@ -315,7 +332,7 @@ export function ApplicationReviewDetailView({
         </Alert>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         {/* Candidate record */}
         <div className="space-y-6">
           <Panel title="Statement of interest">

@@ -69,7 +69,7 @@ export function StudentProfileView() {
         subtitle="Required fields are needed for a complete profile."
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px] lg:gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px] lg:gap-6">
         {/* Form column */}
         <div className="lg:col-span-1">
           <StudentProfileForm

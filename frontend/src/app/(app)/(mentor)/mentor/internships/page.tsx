@@ -1,7 +1,8 @@
 'use client';
 
 // Assigned internships (Sprint 3/4 — SRS §18: mentors see ONLY internships
-// assigned to them; the backend 404s everything else).
+// assigned to them; the backend 404s everything else). Administrators use the
+// same page to supervise every internship that has a mentor.
 
 import {
   ButtonLink,
@@ -14,12 +15,15 @@ import {
   StatusBadge,
 } from '@/components/ui';
 import { useApiLoad } from '@/lib/use-async';
+import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { INTERNSHIP_STATUS_LABEL, INTERNSHIP_STATUS_TONE as STATUS_TONE } from '@/lib/status';
 import type { Internship } from '@/types';
 
 export default function MentorInternshipsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const { data, error, loading, reload } = useApiLoad<Internship[]>(() =>
     api.get<{ data: Internship[] }>('/api/mentor/internships').then((r) => r.data)
   );
@@ -27,8 +31,12 @@ export default function MentorInternshipsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Assigned internships"
-        subtitle="Only internships assigned to you are listed. Open one to track progress and review submissions."
+        title={isAdmin ? 'Task reviews & evaluation' : 'Assigned internships'}
+        subtitle={
+          isAdmin
+            ? 'Every internship with an assigned mentor. Open one to review submissions, reopen tasks, adjust due dates or record the final evaluation.'
+            : 'Only internships assigned to you are listed. Open one to track progress and review submissions.'
+        }
       />
       {loading && <LoadingState label="Loading internships…" />}
       {error && <ErrorState message={error} onRetry={reload} />}
@@ -36,8 +44,12 @@ export default function MentorInternshipsPage() {
       {!loading && !error && (!data || data.length === 0) && (
         <Panel>
           <EmptyState
-            title="No assigned internships"
-            description="When an administrator assigns you as a mentor, the internship appears here with its tasks and review workload."
+            title={isAdmin ? 'No supervised internships' : 'No assigned internships'}
+            description={
+              isAdmin
+                ? 'Internships appear here once a mentor is assigned to them from Operations → Internships.'
+                : 'When an administrator assigns you as a mentor, the internship appears here with its tasks and review workload.'
+            }
           />
         </Panel>
       )}
@@ -58,6 +70,7 @@ export default function MentorInternshipsPage() {
                   </div>
                   <p className="mt-1 text-sm text-secondary">
                     {internship.intern ? `Intern: ${internship.intern.fullName} · ` : ''}
+                    {isAdmin && internship.mentor ? `Mentor: ${internship.mentor.fullName} · ` : ''}
                     {formatDate(internship.startDate)} – {formatDate(internship.endDate)}
                   </p>
                   {internship.progress && (

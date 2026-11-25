@@ -82,7 +82,9 @@ studentRouter.get('/rubric/active', authMiddleware, asyncHandler(getActiveRubric
 
 const mentorRouter: Router = Router();
 
-mentorRouter.use(authMiddleware, requireRole('MENTOR'));
+// Administrators share the mentor surface: they can review, reopen, adjust
+// due dates and evaluate on ANY internship (services scope mentors to their own).
+mentorRouter.use(authMiddleware, requireRole('MENTOR', 'ADMIN'));
 mentorRouter.get('/internships', validate(listInternshipsQuery), asyncHandler(listAssignedInternships));
 mentorRouter.get('/internships/:id', validate(internshipIdParams), asyncHandler(getAssignedInternship));
 mentorRouter.get('/review-queue', asyncHandler(getReviewQueue));

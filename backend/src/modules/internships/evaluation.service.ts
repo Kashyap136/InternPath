@@ -13,6 +13,7 @@ import { prisma } from '../../shared/prisma/client';
 import { AppError } from '../../shared/utils/AppError';
 import { createAuditLog, AuditAction } from '../../shared/utils/audit';
 import { notify, notifyAdmins } from '../notifications/notification.service';
+import { canSupervise, type Supervisor } from './internship.types';
 
 export class EvaluationService {
   /** FR-078: the active rubric is visible to any authenticated user. */
@@ -24,9 +25,9 @@ export class EvaluationService {
     return { data: rubric };
   }
 
-  /** FR-074/075: submit the final evaluation (mentor, UNDER_EVALUATION, once). */
+  /** FR-074/075: submit the final evaluation (assigned mentor or admin, UNDER_EVALUATION, once). */
   async submit(
-    mentorId: string,
+    supervisor: Supervisor,
     internshipId: string,
     criterionScores: { criterionId: string; score: number }[],
     recommendation: 'COMPLETE' | 'COMPLETE_WITH_APPRECIATION' | 'NOT_COMPLETE',
@@ -37,7 +38,7 @@ export class EvaluationService {
       include: { program: { select: { title: true } } },
     });
     if (!internship) throw new AppError('Internship not found', 404, 'INTERNSHIP_NOT_FOUND');
-    if (internship.mentorId !== mentorId) {
+    if (!canSupervise(supervisor, internship.mentorId)) {
       throw new AppError('Internship not found', 404, 'INTERNSHIP_NOT_FOUND'); // existence not disclosed
     }
     if (internship.status !== 'UNDER_EVALUATION') {
@@ -106,7 +107,7 @@ export class EvaluationService {
       finalScore,
       recommendation,
       remarks: remarks ?? null,
-      submittedBy: mentorId,
+      submittedBy: supervisor.id,
     };
 
     const evaluation = existing
@@ -139,7 +140,7 @@ export class EvaluationService {
       : await prisma.evaluation.create({ data });
 
     await createAuditLog({
-      actorId: mentorId,
+      actorId: supervisor.id,
       action: AuditAction.EVALUATION_SUBMITTED,
       entityType: 'Evaluation',
       entityId: evaluation.id,
@@ -221,13 +222,13 @@ export class EvaluationService {
     return { data: evaluation };
   }
 
-  /** Mentor reads the evaluation of an internship they are assigned to. */
-  async getForMentor(mentorId: string, internshipId: string) {
+  /** Assigned mentor (or an admin) reads the evaluation of an internship. */
+  async getForMentor(supervisor: Supervisor, internshipId: string) {
     const internship = await prisma.internship.findUnique({
       where: { id: internshipId },
       select: { mentorId: true },
     });
-    if (!internship || internship.mentorId !== mentorId) {
+    if (!internship || !canSupervise(supervisor, internship.mentorId)) {
       throw new AppError('Internship not found', 404, 'INTERNSHIP_NOT_FOUND');
     }
     const evaluation = await prisma.evaluation.findUnique({

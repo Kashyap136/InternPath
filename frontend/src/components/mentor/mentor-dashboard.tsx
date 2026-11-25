@@ -82,14 +82,14 @@ export function MentorView({ user }: { user: AuthUser }) {
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-4 lg:gap-4">
         <StatCard label="Awaiting review" value={queue.length} hint={overdue ? `${overdue} past review target` : 'All within target'} href="/mentor/review-queue" icon={ClockIcon} tone="accent" />
         <StatCard label="Active interns" value={active.length} hint={capacity ? `Capacity ${active.length}/${capacity}` : undefined} href="/mentor/internships" icon={UsersIcon} />
         <StatCard label="All assignments" value={internships.length} hint="Including upcoming and finished" href="/mentor/internships" icon={BuildingOfficeIcon} tone="purple" />
         <StatCard label="Expertise domains" value={profile?.domains?.length ?? 0} hint="Used for eligibility" href="/profile" icon={GraduationCapIcon} tone="wine" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5 lg:items-start lg:gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5 lg:items-start lg:gap-6">
         <Panel
           title="Review queue"
           subtitle="Oldest first"
@@ -105,10 +105,10 @@ export function MentorView({ user }: { user: AuthUser }) {
                 <li key={q.submissionId}>
                   <Link
                     href={`/mentor/internships/${q.internshipId}`}
-                    className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-5 py-3.5 transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
                   >
                     <Avatar name={q.intern.fullName} />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-[9rem] flex-1">
                       <p className="truncate text-sm font-medium text-ink">{q.task.title}</p>
                       <p className="truncate text-xs text-muted">
                         {q.intern.fullName} · {q.program.title}{q.versionNumber > 1 ? ` · v${q.versionNumber}` : ''}
@@ -156,7 +156,7 @@ export function MentorView({ user }: { user: AuthUser }) {
         </Panel>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3 lg:items-start lg:gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-start lg:gap-6">
         <Panel title="Mentor profile" className="lg:col-span-2">
           {profile ? (
             <div className="space-y-4">

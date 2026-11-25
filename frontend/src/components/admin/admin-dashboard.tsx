@@ -92,14 +92,14 @@ export function AdminView({ user }: { user: AuthUser }) {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-4 lg:gap-4">
         <StatCard label="Applications to review" value={data.awaitingCount} hint="Submitted or under review" href="/admin/applications" icon={InboxIcon} tone="accent" />
         <StatCard label="Active internships" value={data.activeInternships} hint={`${data.pendingStart} waiting to start`} href="/admin/internships" icon={BuildingOfficeIcon} />
         <StatCard label="Open programs" value={data.openPrograms} hint="Accepting applications" href="/admin/programs" icon={GraduationCapIcon} tone="purple" />
         <StatCard label="Published projects" value={data.publishedProjects} hint={data.projectReviews ? `${data.projectReviews} awaiting review` : 'None awaiting review'} href="/admin/projects" icon={ClipboardCheckIcon} tone="wine" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5 lg:items-start lg:gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5 lg:items-start lg:gap-6">
         <Panel
           title="Needs a decision"
           subtitle="Applications waiting for review"
@@ -115,10 +115,10 @@ export function AdminView({ user }: { user: AuthUser }) {
                 <li key={a.id}>
                   <Link
                     href="/admin/applications"
-                    className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-5 py-3.5 transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
                   >
                     <Avatar name={a.user?.fullName ?? '?'} />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-[9rem] flex-1">
                       <p className="truncate text-sm font-medium text-ink">{a.user?.fullName ?? 'Applicant'}</p>
                       <p className="truncate text-xs text-muted">{a.program?.title ?? 'Program'} · {formatRelative(a.updatedAt)}</p>
                     </div>

@@ -14,11 +14,18 @@
 //   - closes automatically on route change
 //   - body scroll is locked only while the modal drawer is open
 //
+// The mobile drawer is PORTALLED to <body>. The headers that host this menu
+// use `backdrop-filter` (frosted glass), and per the CSS spec an element with
+// a backdrop-filter becomes the containing block for `position: fixed`
+// descendants — rendered in place, the "full-height" drawer was clipped to
+// the 64px header bar instead of covering the viewport.
+//
 // The menu content is role-specific (see app-shell / public-header); this
 // component is purely presentational and holds no authorization logic —
 // the backend remains authoritative.
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarsThreeIcon, MenuIcon, XIcon } from '@/components/icons';
@@ -32,6 +39,21 @@ export interface NavGroup {
   /** Optional small group heading inside the panel. */
   label?: string;
   links: NavLink[];
+}
+
+const DESKTOP_QUERY = '(min-width: 768px)';
+
+/** Tracks the md breakpoint: dropdown at md+, modal drawer below. */
+function useIsDesktop(): boolean {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia(DESKTOP_QUERY);
+    const update = () => setDesktop(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  return desktop;
 }
 
 function isActive(pathname: string, href: string): boolean {
@@ -136,6 +158,7 @@ export function NavMenu({
   // React-generated id — identical on server and client (a Math.random id
   // here caused a hydration attribute mismatch).
   const panelId = useId();
+  const isDesktop = useIsDesktop();
 
   const close = useCallback((restoreFocus = false) => {
     setOpen(false);
@@ -196,7 +219,7 @@ export function NavMenu({
     });
 
     // Lock background scroll only for the modal (mobile) presentation.
-    const media = window.matchMedia('(min-width: 768px)');
+    const media = window.matchMedia(DESKTOP_QUERY);
     if (!media.matches) {
       const previousOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -239,39 +262,62 @@ export function NavMenu({
         )}
       </button>
 
-      {open && (
-        <>
-          {/* Overlay — modal on mobile only */}
-          <div
-            aria-hidden="true"
-            onClick={() => close()}
-            className="fade-in fixed inset-0 z-40 bg-primary-950/40 backdrop-blur-[2px] md:hidden"
-          />
-          <div
-            ref={panelRef}
-            id={panelId}
-            role="dialog"
-            aria-modal="true"
-            aria-label={label}
-            className="slide-in-right fixed inset-y-0 right-0 z-50 flex w-80 max-w-[86vw] flex-col overflow-y-auto border-l border-line bg-white p-3 shadow-dialog md:pop-in md:absolute md:inset-auto md:top-full md:right-0 md:mt-2 md:max-h-[72vh] md:w-76 md:rounded-2xl md:border md:p-2"
-          >
-            <div className="mb-1 flex items-center justify-between border-b border-line px-2 pb-3 pt-1 md:hidden">
-              <span className="font-serif text-base font-semibold text-ink">Menu</span>
-              <button
-                type="button"
-                aria-label="Close menu"
-                onClick={() => close(true)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-secondary hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
-              >
-                <XIcon className="h-5 w-5" />
-              </button>
-            </div>
-            <nav aria-label={label} className="flex flex-col gap-1 pb-2">
-              <PanelGroups groups={groups} pathname={pathname} onNavigate={() => close()} icons={icons} />
-            </nav>
-          </div>
-        </>
+      {open && isDesktop && (
+        // md+: dropdown anchored under the button (the caller wraps the
+        // button in a `relative` container).
+        <div
+          ref={panelRef}
+          id={panelId}
+          role="dialog"
+          aria-label={label}
+          className="pop-in absolute right-0 top-full z-50 mt-2 flex max-h-[72vh] w-76 flex-col overflow-y-auto rounded-2xl border border-line bg-white p-2 shadow-dialog"
+        >
+          <nav aria-label={label} className="flex flex-col gap-1 pb-2">
+            <PanelGroups groups={groups} pathname={pathname} onNavigate={() => close()} icons={icons} />
+          </nav>
+        </div>
       )}
+
+      {open &&
+        !isDesktop &&
+        createPortal(
+          <>
+            {/* Overlay + full-height drawer, rendered on <body> so no
+                ancestor (frosted header) can clip the fixed positioning. */}
+            <div
+              aria-hidden="true"
+              onClick={() => close()}
+              className="fade-in fixed inset-0 z-[60] bg-primary-950/40 backdrop-blur-[2px]"
+            />
+            <div
+              ref={panelRef}
+              id={panelId}
+              role="dialog"
+              aria-modal="true"
+              aria-label={label}
+              className="slide-in-right fixed inset-y-0 right-0 z-[70] flex h-dvh w-80 max-w-[86vw] flex-col border-l border-line bg-white shadow-dialog"
+            >
+              <div className="flex shrink-0 items-center justify-between border-b border-line px-5 pb-3 pt-4">
+                <span className="font-serif text-base font-semibold text-ink">Menu</span>
+                <button
+                  type="button"
+                  aria-label="Close menu"
+                  onClick={() => close(true)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-secondary hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
+                >
+                  <XIcon className="h-5 w-5" />
+                </button>
+              </div>
+              <nav
+                aria-label={label}
+                className="flex flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1"
+              >
+                <PanelGroups groups={groups} pathname={pathname} onNavigate={() => close()} icons={icons} />
+              </nav>
+            </div>
+          </>,
+          document.body
+        )}
     </>
   );
 }

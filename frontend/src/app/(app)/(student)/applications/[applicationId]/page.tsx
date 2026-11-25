@@ -4,7 +4,7 @@
 // editable only while the application is DRAFT; submission is a final
 // guarded action re-validated server-side (deadline/profile/eligibility).
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -26,7 +26,8 @@ import { useApiLoad } from '@/lib/use-async';
 import { formatDate } from '@/lib/format';
 import { apiErrorMessage, parseApiError } from '@/lib/form-errors';
 import { APPLICATION_STATUS_LABEL, applicationActionsFor } from '@/lib/status';
-import type { Application, ApplicationStatus } from '@/types';
+import type { Application, ApplicationReadiness, ApplicationStatus } from '@/types';
+import { CheckCircleIcon, XCircleIcon } from '@/components/icons';
 
 const STATUS_TONE: Record<ApplicationStatus, 'success' | 'warning' | 'danger' | 'neutral'> = {
   DRAFT: 'neutral',
@@ -41,6 +42,55 @@ const STATUS_TONE: Record<ApplicationStatus, 'success' | 'warning' | 'danger' | 
 };
 
 const STATEMENT_MAX = 2000;
+
+const LEVEL_LABEL: Record<string, string> = {
+  BEGINNER: 'Beginner',
+  INTERMEDIATE: 'Intermediate',
+  NOT_ELIGIBLE: 'Not eligible',
+};
+
+/**
+ * What the server will check on submit, shown before the student presses the
+ * button. Every row mirrors one server-side gate (application.service).
+ */
+function readinessItems(r: ApplicationReadiness, statementFilled: boolean) {
+  const required = LEVEL_LABEL[r.requiredLevel] ?? r.requiredLevel;
+  return [
+    {
+      ok: statementFilled,
+      label: 'Statement of interest written',
+      help: 'Write a few sentences about why this program fits you.',
+    },
+    {
+      ok: r.profileComplete,
+      label: 'Student profile complete',
+      help: 'Add your institution, degree, year of study, graduation year and at least one skill.',
+      action: { href: '/profile', label: 'Complete profile' },
+    },
+    {
+      ok: r.assessmentPassed,
+      label: 'Domain assessment passed',
+      help: r.assessmentTaken
+        ? 'Your assessment result in this domain is not eligible yet. Retake it when the retake window allows.'
+        : 'Take the skills assessment for this program’s domain.',
+      action: { href: '/assessment', label: r.assessmentTaken ? 'View assessment' : 'Take assessment' },
+    },
+    {
+      ok: r.levelMet,
+      label: `Assessment level: ${required} or higher`,
+      help: r.assessmentPassed
+        ? `Your result is ${LEVEL_LABEL[r.resultLevel ?? ''] ?? 'below the requirement'}; this program needs ${required}.`
+        : `This program needs the ${required} level on the domain assessment.`,
+    },
+    {
+      ok: r.programOpen && r.deadlineOpen,
+      label: 'Program still accepting applications',
+      help: r.deadlineOpen
+        ? 'The program is no longer open for applications.'
+        : 'The application deadline has passed.',
+    },
+  ];
+}
 
 export default function ApplicationDetailPage() {
   const params = useParams<{ applicationId: string }>();
@@ -69,6 +119,14 @@ export default function ApplicationDetailPage() {
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const submitErrorRef = useRef<HTMLDivElement>(null);
+
+  // A refused submission must be impossible to miss: the button sits at the
+  // bottom of the page, so bring the error into view (on a phone it was
+  // previously rendered off-screen and the draft looked silently unsent).
+  useEffect(() => {
+    if (submitError) submitErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [submitError]);
 
   useEffect(() => {
     // Seed the textarea once the server data arrives; afterwards local edits
@@ -170,6 +228,9 @@ export default function ApplicationDetailPage() {
   const application = data;
   const actions = applicationActionsFor(application.status);
   const program = application.program;
+  const readiness = application.status === 'DRAFT' ? application.readiness ?? null : null;
+  const checklist = readiness ? readinessItems(readiness, statement.trim().length > 0) : [];
+  const blockers = checklist.filter((item) => !item.ok);
 
   return (
     <div className="space-y-6">
@@ -203,9 +264,9 @@ export default function ApplicationDetailPage() {
           {saveError}
         </Alert>
       ) : null}
-      {submitError ? (
-        <Alert variant="error" title="Submission failed">
-          {submitError}
+      {application.status === 'DRAFT' ? (
+        <Alert variant="info" title="This application is a draft — it has not been sent yet">
+          Reviewers only see it after you press <strong>Submit for review</strong> below.
         </Alert>
       ) : null}
 
@@ -243,6 +304,47 @@ export default function ApplicationDetailPage() {
         </Panel>
       )}
 
+      {readiness ? (
+        <Panel
+          title="Ready to submit?"
+          subtitle={
+            blockers.length === 0
+              ? 'Everything checks out. Submit when you are happy with your statement.'
+              : `${blockers.length} item${blockers.length === 1 ? '' : 's'} left before you can submit.`
+          }
+        >
+          <ul className="space-y-3">
+            {checklist.map((item) => (
+              <li key={item.label} className="flex items-start gap-3">
+                {item.ok ? (
+                  <CheckCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-success-text" />
+                ) : (
+                  <XCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-danger-solid" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm font-medium ${item.ok ? 'text-ink' : 'text-danger-text'}`}>
+                    {item.label}
+                  </p>
+                  {!item.ok ? (
+                    <p className="mt-0.5 text-sm text-secondary">
+                      {item.help}{' '}
+                      {item.action ? (
+                        <Link
+                          href={item.action.href}
+                          className="font-medium text-primary-700 underline-offset-2 hover:underline"
+                        >
+                          {item.action.label} →
+                        </Link>
+                      ) : null}
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      ) : null}
+
       {application.status !== 'DRAFT' ? (
         <Panel title="Status history">
           <ul className="space-y-1 text-sm">
@@ -257,7 +359,15 @@ export default function ApplicationDetailPage() {
         </Panel>
       ) : null}
 
-      <div className="flex flex-wrap justify-end gap-2">
+      {submitError ? (
+        <div ref={submitErrorRef}>
+          <Alert variant="error" title="Not submitted — your application is still a draft">
+            {submitError}
+          </Alert>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <Link
           href="/applications"
           className="text-sm text-muted underline-offset-2 hover:underline"
@@ -265,7 +375,13 @@ export default function ApplicationDetailPage() {
           Back to applications
         </Link>
         {actions.canSubmit ? (
-          <Button onClick={() => setConfirming(true)} disabled={submitting || statement.trim().length === 0}>
+          <Button
+            onClick={() => {
+              setSubmitError(null);
+              setConfirming(true);
+            }}
+            disabled={submitting || statement.trim().length === 0 || (readiness !== null && blockers.length > 0)}
+          >
             {submitting ? 'Submitting…' : 'Submit for review'}
           </Button>
         ) : null}
@@ -274,7 +390,7 @@ export default function ApplicationDetailPage() {
       <ConfirmDialog
         open={confirming}
         title="Submit application?"
-        description="Submitting sends the application for administrator review and finalizes your statement. You cannot edit it afterwards."
+        description="Submitting sends the application to the program's mentors and administrators for review and finalizes your statement. You cannot edit it afterwards."
         confirmLabel={submitting ? 'Submitting…' : 'Submit application'}
         confirmVariant="primary"
         busy={submitting}

@@ -170,7 +170,7 @@ export default function ProgramDetailPage() {
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <dl className="rounded-xl border border-neutral-border bg-white p-5">
           {/* grid-cols-[auto_1fr] — underscores, not commas: Tailwind arbitrary
               values pass through verbatim and a comma produces invalid CSS. */}
@@ -255,8 +255,11 @@ export default function ProgramDetailPage() {
           <h2 className="font-medium text-ink">How applications work</h2>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>Start a draft application — your statement of interest stays editable.</li>
-            <li>Complete your student profile; applications require a complete profile.</li>
-            <li>Submit before the deadline. Review and decisions are handled by administrators.</li>
+            <li>Complete your student profile and pass this domain’s skills assessment at the required level.</li>
+            <li>
+              Press <strong>Submit for review</strong> before the deadline — a draft is not sent. Mentors in
+              this domain and administrators then review and decide.
+            </li>
           </ol>
         </div>
       </div>

@@ -221,6 +221,12 @@ export default function ApplicationsPage() {
                   </StatusBadge>
                 </div>
 
+                {application.status === 'DRAFT' ? (
+                  <p className="mt-2 text-sm text-warning-text">
+                    Not submitted yet — reviewers can’t see this application until you submit it.
+                  </p>
+                ) : null}
+
                 {rejection ? (
                   <Alert variant="warning" title="Reason for rejection">
                     {rejection}
@@ -247,7 +253,7 @@ export default function ApplicationsPage() {
                     href={`/applications/${application.id}`}
                     className="text-sm font-medium text-primary-600 underline-offset-2 hover:underline"
                   >
-                    {actions.canSubmit ? 'Edit statement →' : 'Open →'}
+                    {actions.canSubmit ? 'Finish & submit →' : 'Open →'}
                   </Link>
                   {actions.canAccept ? (
                     <Button

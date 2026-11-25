@@ -30,8 +30,8 @@ const publicGroups: NavGroup[] = [
 ];
 
 // Signed-out visitors on phones see only "Sign in" on the bar (the two
-// buttons do not fit beside the wordmark at 360px), so registration must
-// stay reachable through the site menu.
+// buttons do not fit beside the wordmark at 360px), and below 360px not even
+// that — so both account actions must stay reachable through the site menu.
 const accountGroup: NavGroup = {
   label: 'Account',
   links: [
@@ -71,7 +71,7 @@ export function PublicHeader() {
   return (
     <header className="sticky top-0 z-20 border-b border-line/70 bg-canvas/75 backdrop-blur-xl supports-backdrop-filter:bg-canvas/65">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-8">
+        <div className="flex min-w-0 items-center gap-8">
           <Wordmark href="/" />
           <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
             {inlineLinks.map((link) => {
@@ -92,15 +92,17 @@ export function PublicHeader() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {user ? (
             <ButtonLink href="/dashboard" size="sm">
-              Go to dashboard
+              <span className="max-[359px]:hidden">Go to dashboard</span>
+              <span className="min-[360px]:hidden">Dashboard</span>
             </ButtonLink>
           ) : (
             <>
               {pathname !== '/login' && (
-                <ButtonLink href="/login" variant="ghost" size="sm">
+                // Below 360px only the wordmark + menu fit; Sign in is in the menu.
+                <ButtonLink href="/login" variant="ghost" size="sm" className="max-[359px]:hidden">
                   Sign in
                 </ButtonLink>
               )}

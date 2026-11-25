@@ -10,6 +10,7 @@ import { useState } from 'react';
 import {
   Alert,
   Button,
+  ButtonLink,
   ConfirmDialog,
   EmptyState,
   ErrorState,
@@ -179,7 +180,14 @@ export default function AdminInternshipsPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {internship.mentorId && internship.status !== 'PENDING_START' && (
+                    // Same workspace mentors use: review submissions, reopen
+                    // tasks, change due dates and record the final evaluation.
+                    <ButtonLink size="sm" variant="secondary" href={`/mentor/internships/${internship.id}`}>
+                      Review tasks
+                    </ButtonLink>
+                  )}
                   {!internship.mentorId && !['COMPLETED', 'WITHDRAWN', 'TERMINATED'].includes(internship.status) && (
                     <AssignMentorButton
                       internship={internship}

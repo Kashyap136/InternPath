@@ -216,11 +216,14 @@ export function Wordmark({
   href = '/',
   className = '',
   tone = 'dark',
+  compact = false,
 }: {
   href?: string;
   className?: string;
   /** `light` renders the name in white for dark (evergreen) surfaces. */
   tone?: 'dark' | 'light';
+  /** Below 360px show only the mark (the name stays for screen readers). */
+  compact?: boolean;
 }) {
   return (
     <Link
@@ -244,7 +247,7 @@ export function Wordmark({
       <span
         className={`font-serif text-[19px] font-bold tracking-[-0.03em] ${
           tone === 'light' ? 'text-white' : 'text-ink'
-        }`}
+        } ${compact ? 'max-[359px]:sr-only' : ''}`}
       >
         InternPath
       </span>
@@ -848,7 +851,7 @@ export function Panel({
               </h2>
             )}
             {subtitle && (
-              <p className="mt-0.5 text-[13px] text-secondary">{subtitle}</p>
+              <p className="mt-0.5 text-[13px] text-secondary [overflow-wrap:anywhere]">{subtitle}</p>
             )}
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}

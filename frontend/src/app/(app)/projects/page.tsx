@@ -131,7 +131,7 @@ export default function ProjectRepositoryPage() {
               filters to see more.
             </p>
           ) : null}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {data.data.map((project) => (
             <Panel key={project.id}>
               <div className="flex items-start justify-between gap-3">

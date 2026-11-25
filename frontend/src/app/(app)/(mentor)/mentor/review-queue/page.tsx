@@ -15,6 +15,7 @@ import {
   StatusBadge,
 } from '@/components/ui';
 import { useApiLoad } from '@/lib/use-async';
+import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 
@@ -23,6 +24,7 @@ interface QueueItem {
   versionNumber: number;
   task: { id: string; title: string; status: string };
   intern: { id: string; fullName: string };
+  mentor?: { id: string; fullName: string } | null;
   program: { title: string };
   internshipId: string;
   submittedAt: string;
@@ -31,6 +33,8 @@ interface QueueItem {
 }
 
 export default function ReviewQueuePage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const { data, error, loading, reload } = useApiLoad<QueueItem[]>(() =>
     api.get<{ data: QueueItem[] }>('/api/mentor/review-queue').then((r) => r.data)
   );
@@ -39,7 +43,11 @@ export default function ReviewQueuePage() {
     <div className="space-y-6">
       <PageHeader
         title="Review queue"
-        subtitle="Pending submissions from your interns, oldest first. Reviews are handled from the internship detail page."
+        subtitle={
+          isAdmin
+            ? 'Pending submissions across every internship, oldest first. Open one to review it on the internship page.'
+            : 'Pending submissions from your interns, oldest first. Reviews are handled from the internship detail page.'
+        }
       />
 
       {loading && <LoadingState label="Loading review queue…" />}
@@ -49,7 +57,11 @@ export default function ReviewQueuePage() {
         <Panel>
           <EmptyState
             title="Nothing waiting for review"
-            description="When an intern submits work for one of your assigned internships, it appears here."
+            description={
+              isAdmin
+                ? 'When an intern submits work on any supervised internship, it appears here.'
+                : 'When an intern submits work for one of your assigned internships, it appears here.'
+            }
           />
         </Panel>
       )}
@@ -70,11 +82,12 @@ export default function ReviewQueuePage() {
                     <span className="text-muted">(version {item.versionNumber})</span>
                   </p>
                   <p className="mt-0.5 text-sm text-secondary">
-                    {item.intern.fullName} · {item.program.title} · submitted{' '}
+                    {item.intern.fullName} · {item.program.title}
+                    {isAdmin && item.mentor ? ` · mentor ${item.mentor.fullName}` : ''} · submitted{' '}
                     {formatDateTime(item.submittedAt)}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {item.reviewPeriodBreached && (
                     <StatusBadge tone="danger" dot={false}>
                       Overdue review

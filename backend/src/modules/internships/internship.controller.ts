@@ -47,10 +47,10 @@ export const withdrawInternship = asyncHandler(async (req: Request, res: Respons
   res.json({ data: internship, message: 'Internship withdrawn' });
 });
 
-// ---- Mentor (assigned internships only) ----
+// ---- Mentor surface (assigned internships; admins see all) ----
 
 export const listAssignedInternships = asyncHandler(async (req: Request, res: Response) => {
-  const result = await internshipService.listAssigned(req.user!.id, {
+  const result = await internshipService.listAssigned(req.user!, {
     status: req.query.status as string | undefined,
     page: req.query.page ? Number(req.query.page) : undefined,
     limit: req.query.limit ? Number(req.query.limit) : undefined,
@@ -59,23 +59,23 @@ export const listAssignedInternships = asyncHandler(async (req: Request, res: Re
 });
 
 export const getAssignedInternship = asyncHandler(async (req: Request, res: Response) => {
-  const result = await internshipService.getAssigned(req.user!.id, req.params.id as string);
+  const result = await internshipService.getAssigned(req.user!, req.params.id as string);
   res.json(result);
 });
 
 export const getReviewQueue = asyncHandler(async (req: Request, res: Response) => {
-  const result = await internshipService.reviewQueue(req.user!.id);
+  const result = await internshipService.reviewQueue(req.user!);
   res.json(result);
 });
 
 export const startTaskReview = asyncHandler(async (req: Request, res: Response) => {
-  const task = await internshipService.startReview(req.user!.id, req.params.internTaskId as string);
+  const task = await internshipService.startReview(req.user!, req.params.internTaskId as string);
   res.json({ data: task, message: 'Task moved to review' });
 });
 
 export const decideSubmissionReview = asyncHandler(async (req: Request, res: Response) => {
   const { decision, comment } = req.body as { decision: 'APPROVED' | 'CHANGES_REQUESTED'; comment: string };
-  const result = await internshipService.decideSubmission(req.user!.id, req.params.internTaskId as string, decision, comment);
+  const result = await internshipService.decideSubmission(req.user!, req.params.internTaskId as string, decision, comment);
   res.json({
     data: result,
     message: decision === 'APPROVED' ? 'Submission approved' : 'Changes requested',
@@ -85,7 +85,7 @@ export const decideSubmissionReview = asyncHandler(async (req: Request, res: Res
 export const reopenApprovedTask = asyncHandler(async (req: Request, res: Response) => {
   const { reason } = req.body as { reason: string };
   const task = await internshipService.reopenApprovedTask(
-    req.user!.id,
+    req.user!,
     req.params.internTaskId as string,
     reason
   );
@@ -94,7 +94,7 @@ export const reopenApprovedTask = asyncHandler(async (req: Request, res: Respons
 
 export const changeTaskDueDate = asyncHandler(async (req: Request, res: Response) => {
   const { dueDate, reason } = req.body as { dueDate: Date; reason: string };
-  const task = await internshipService.changeDueDate(req.user!.id, req.params.internTaskId as string, new Date(dueDate), reason);
+  const task = await internshipService.changeDueDate(req.user!, req.params.internTaskId as string, new Date(dueDate), reason);
   res.json({ data: task, message: 'Due date changed' });
 });
 
@@ -107,7 +107,7 @@ export const submitEvaluation = asyncHandler(async (req: Request, res: Response)
     remarks?: string;
   };
   const evaluation = await evaluationService.submit(
-    req.user!.id,
+    req.user!,
     req.params.id as string,
     criterionScores,
     recommendation,
@@ -122,7 +122,7 @@ export const getMyEvaluation = asyncHandler(async (req: Request, res: Response) 
 });
 
 export const getEvaluationForMentor = asyncHandler(async (req: Request, res: Response) => {
-  const result = await evaluationService.getForMentor(req.user!.id, req.params.id as string);
+  const result = await evaluationService.getForMentor(req.user!, req.params.id as string);
   res.json(result);
 });
 
