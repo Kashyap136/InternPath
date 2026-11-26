@@ -80,12 +80,26 @@ function isGmailApiConfigured(): boolean {
   return Boolean(cfg.clientId && cfg.clientSecret && cfg.refreshToken && cfg.from);
 }
 
+/** Network timeout for every outbound email call (token refresh, send, SMTP). */
+const EMAIL_TIMEOUT_MS = Number(process.env.EMAIL_TIMEOUT_MS || 15_000);
+
 let gmailAccessToken: { value: string; expiresAt: number } | null = null;
+// Concurrent sends share one in-flight refresh instead of each hitting Google.
+let gmailTokenRefresh: Promise<string> | null = null;
 
 async function getGmailAccessToken(): Promise<string> {
   if (gmailAccessToken && gmailAccessToken.expiresAt - 60_000 > Date.now()) {
     return gmailAccessToken.value;
   }
+  if (!gmailTokenRefresh) {
+    gmailTokenRefresh = refreshGmailAccessToken().finally(() => {
+      gmailTokenRefresh = null;
+    });
+  }
+  return gmailTokenRefresh;
+}
+
+async function refreshGmailAccessToken(): Promise<string> {
   const cfg = gmailApiConfig();
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -96,14 +110,26 @@ async function getGmailAccessToken(): Promise<string> {
       refresh_token: cfg.refreshToken,
       grant_type: 'refresh_token',
     }),
+    signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
   });
   const body = (await response.json().catch(() => ({}))) as {
     access_token?: string;
     expires_in?: number;
     error?: string;
+    error_description?: string;
   };
   if (!response.ok || !body.access_token) {
-    throw new Error(`Gmail token refresh failed: ${body.error ?? response.status}`);
+    // invalid_grant = the refresh token was revoked or expired. Tokens issued
+    // while the OAuth consent screen is in "Testing" expire after 7 days, and
+    // changing the sender account's password revokes them too.
+    const hint =
+      body.error === 'invalid_grant'
+        ? ' (refresh token revoked or expired: set the OAuth consent screen to "In production" and generate a new GMAIL_REFRESH_TOKEN)'
+        : body.error === 'invalid_client' || body.error === 'unauthorized_client'
+          ? ' (GMAIL_CLIENT_ID/SECRET must be the OAuth client the refresh token was issued to)'
+          : '';
+    const description = body.error_description ? ` - ${body.error_description}` : '';
+    throw new Error(`Gmail token refresh failed: ${body.error ?? response.status}${description}${hint}`);
   }
   gmailAccessToken = {
     value: body.access_token,
@@ -125,16 +151,31 @@ async function sendViaGmailApi(input: EmailInput): Promise<void> {
     ...(input.html ? { html: input.html } : {}),
   });
   const raw = Buffer.from(composed.message as Buffer).toString('base64url');
-  const accessToken = await getGmailAccessToken();
-  const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ raw }),
-  });
+
+  const attempt = async (): Promise<Response> => {
+    const accessToken = await getGmailAccessToken();
+    return fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw }),
+      signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
+    });
+  };
+
+  let response = await attempt();
+  if (response.status === 401) {
+    // The cached access token was revoked early: refresh once and retry.
+    gmailAccessToken = null;
+    response = await attempt();
+  }
   if (!response.ok) {
     if (response.status === 401) gmailAccessToken = null;
     const detail = await response.text().catch(() => '');
-    throw new Error(`Gmail API send failed (${response.status}): ${detail.slice(0, 200)}`);
+    const hint =
+      response.status === 403
+        ? ' (enable the Gmail API in the Google Cloud project and authorise the gmail.send scope)'
+        : '';
+    throw new Error(`Gmail API send failed (${response.status})${hint}: ${detail.slice(0, 200)}`);
   }
 }
 
@@ -143,15 +184,26 @@ export function isEmailConfigured(): boolean {
   return isGmailApiConfigured() || Boolean(cfg.host && cfg.from);
 }
 
+function describeMissingConfig(): string {
+  const gmail = gmailApiConfig();
+  if (gmail.refreshToken) {
+    const missing = [
+      !gmail.from && 'EMAIL_FROM',
+      !gmail.clientId && 'GMAIL_CLIENT_ID (or GOOGLE_CLIENT_ID)',
+      !gmail.clientSecret && 'GMAIL_CLIENT_SECRET (or GOOGLE_CLIENT_SECRET)',
+    ].filter(Boolean);
+    return `GMAIL_REFRESH_TOKEN is set but ${missing.join(', ')} is missing, so Gmail API sending is disabled`;
+  }
+  if (smtpConfig().host) return 'SMTP_HOST is set but EMAIL_FROM is missing, so SMTP sending is disabled';
+  return 'Neither GMAIL_REFRESH_TOKEN nor SMTP_HOST (with EMAIL_FROM) is configured — transactional email is an honest no-op';
+}
+
 function getTransport(): MailTransport | null {
   const cfg = smtpConfig();
   if (!cfg.host || !cfg.from) {
-    if (!warnedUnconfigured) {
+    if (!warnedUnconfigured && !isGmailApiConfigured()) {
       warnedUnconfigured = true;
-      log({
-        event: 'email_disabled',
-        reason: 'Neither GMAIL_REFRESH_TOKEN nor SMTP_HOST (with EMAIL_FROM) is configured — transactional email is an honest no-op',
-      });
+      log({ event: 'email_disabled', reason: describeMissingConfig() });
     }
     return null;
   }
@@ -161,6 +213,11 @@ function getTransport(): MailTransport | null {
       port: cfg.port,
       secure: cfg.secure,
       auth: cfg.user ? { user: cfg.user, pass: cfg.pass } : undefined,
+      // Without explicit timeouts a blocked SMTP port (e.g. Render's free
+      // plan) stalls each request for minutes before failing.
+      connectionTimeout: EMAIL_TIMEOUT_MS,
+      greetingTimeout: EMAIL_TIMEOUT_MS,
+      socketTimeout: EMAIL_TIMEOUT_MS * 2,
     });
   }
   return transport;
@@ -180,7 +237,9 @@ export async function sendEmail(input: EmailInput): Promise<EmailResult> {
         subject: input.subject,
         error: error instanceof Error ? error.message : 'unknown',
       });
-      return { delivered: false, reason: 'send_failed' };
+      // Fall back to SMTP only when it is configured too.
+      const smtp = smtpConfig();
+      if (!smtp.host || !smtp.from) return { delivered: false, reason: 'send_failed' };
     }
   }
 
@@ -196,11 +255,12 @@ export async function sendEmail(input: EmailInput): Promise<EmailResult> {
       text: input.text,
       ...(input.html ? { html: input.html } : {}),
     });
-    log({ event: 'email_sent', to: maskAddress(input.to), subject: input.subject });
+    log({ event: 'email_sent', via: 'smtp', to: maskAddress(input.to), subject: input.subject });
     return { delivered: true };
   } catch (error) {
     log({
       event: 'email_send_failed',
+      via: 'smtp',
       to: maskAddress(input.to),
       subject: input.subject,
       error: error instanceof Error ? error.message : 'unknown',

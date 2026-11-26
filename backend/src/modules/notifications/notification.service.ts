@@ -8,6 +8,7 @@
 import { prisma } from '../../shared/prisma/client';
 import { AppError } from '../../shared/utils/AppError';
 import { sendEmail } from '../../shared/email/mailer';
+import { config } from '../../shared/config';
 
 export interface NotifyInput {
   type: string;
@@ -58,7 +59,7 @@ async function sendCompanionEmail(userId: string, input: NotifyInput): Promise<v
     // Suspended users must not receive workflow email; the suspension notice
     // itself is sent directly by auth.service.
     if (!user || user.status !== 'ACTIVE') return;
-    const appUrl = process.env.PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl = (process.env.PUBLIC_APP_URL || config.FRONTEND_URL).replace(/\/+$/, '');
     await sendEmail({
       to: user.email,
       subject: `InternPath: ${input.title}`,
@@ -88,9 +89,10 @@ export async function notify(userId: string, input: NotifyInput): Promise<void> 
   } catch (error) {
     console.error('notify() failed (non-fatal):', error);
   }
-  // Fire-and-forget companion email (no-op unless SMTP is configured; the
-  // await is bounded by the mailer's own timeout handling and never throws).
-  await sendCompanionEmail(userId, input);
+  // Fire-and-forget companion email (no-op unless email is configured). Not
+  // awaited, so a slow Gmail/SMTP call never delays the lifecycle request
+  // that produced the event. sendCompanionEmail never rejects.
+  void sendCompanionEmail(userId, input);
 }
 
 /** Notify every active administrator (used e.g. for new reports, project submissions). */

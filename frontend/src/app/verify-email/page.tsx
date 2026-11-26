@@ -28,6 +28,16 @@ export default function VerifyEmailPage() {
   const [resending, setResending] = useState(false);
   // A code was just sent at registration / sign-in, so start with a cooldown.
   const [cooldown, setCooldown] = useState(RESEND_SECONDS);
+  // Registration reports `?sent=0` when the first email could not be sent.
+  // In that case there is no code on its way, so allow an immediate resend.
+  const [initialSendFailed, setInitialSendFailed] = useState(false);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('sent') === '0') {
+      setInitialSendFailed(true);
+      setCooldown(0);
+    }
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -74,11 +84,16 @@ export default function VerifyEmailPage() {
     setResending(true);
     try {
       await api.post('/api/auth/verify-email/resend', {});
+      setInitialSendFailed(false);
       setNotice('A new code is on its way. Check your inbox (and the spam folder).');
       setCode('');
       setCooldown(RESEND_SECONDS);
     } catch (err) {
-      setError(apiErrorMessage(parseApiError(err), 'Could not send a new code.'));
+      const message = apiErrorMessage(parseApiError(err), 'Could not send a new code.');
+      // Server cooldown ("Please wait N seconds…"): sync the button timer.
+      const wait = /wait (\d+) seconds?/i.exec(message);
+      if (wait) setCooldown(Number(wait[1]));
+      setError(message);
     } finally {
       setResending(false);
     }
@@ -103,11 +118,19 @@ export default function VerifyEmailPage() {
           Verify your email
         </h1>
         <p className="mt-2.5 text-[14.5px] leading-relaxed text-secondary text-pretty">
-          We sent a 6-digit code to{' '}
+          {initialSendFailed ? 'We will send a 6-digit code to' : 'We sent a 6-digit code to'}{' '}
           <span className="font-semibold text-ink">{user.email}</span>. Enter it
           below to finish setting up your account. The code expires in 15
           minutes.
         </p>
+
+        {initialSendFailed && !notice && !error && (
+          <div className="mt-6">
+            <Alert variant="warning" title="Email not sent yet">
+              We could not send your verification email. Use “Resend code” to try again.
+            </Alert>
+          </div>
+        )}
 
         {notice && (
           <div className="mt-6">

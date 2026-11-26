@@ -113,7 +113,7 @@ export async function issueEmailCode(
   }
 
   const code = generateCode();
-  await prisma.$transaction([
+  const [, created] = await prisma.$transaction([
     // Only the newest code is ever valid.
     prisma.emailCode.deleteMany({ where: { userId: user.id, purpose } }),
     prisma.emailCode.create({
@@ -128,6 +128,12 @@ export async function issueEmailCode(
 
   const { subject, text, html } = renderEmail(purpose, user.fullName, code);
   const result = await sendEmail({ to: user.email, subject, text, html });
+
+  if (!result.delivered && config.NODE_ENV === 'production') {
+    // Nobody can read an undelivered code, so drop it. Otherwise the 60-second
+    // cooldown would block the user's immediate retry after a send failure.
+    await prisma.emailCode.deleteMany({ where: { id: created.id } }).catch(() => undefined);
+  }
 
   if (!result.delivered && config.NODE_ENV !== 'production') {
     // Development convenience only: there is no SMTP, so surface the code

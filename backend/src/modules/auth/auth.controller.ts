@@ -168,7 +168,13 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const verificationRequired = isEmailVerificationRequired();
   let verificationEmailSent = false;
   if (verificationRequired) {
-    verificationEmailSent = (await issueEmailCode(user, 'VERIFY_EMAIL')).delivered;
+    // The account and session already exist, so a failure here must not turn
+    // the response into a 500. The user can resend from the verify page.
+    try {
+      verificationEmailSent = (await issueEmailCode(user, 'VERIFY_EMAIL')).delivered;
+    } catch (error) {
+      console.error('Verification code on register failed:', error instanceof Error ? error.message : error);
+    }
   }
 
   res.status(201).json({
@@ -227,8 +233,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     try {
       await issueEmailCode(user, 'VERIFY_EMAIL');
     } catch (error) {
-      // Cooldown: a code sent under a minute ago is still valid.
-      if (!(error instanceof HttpError && error.statusCode === 429)) throw error;
+      // Cooldown: a code sent under a minute ago is still valid. Any other
+      // failure is logged; the session already exists and the user can resend.
+      if (!(error instanceof HttpError && error.statusCode === 429)) {
+        console.error('Verification code on login failed:', error instanceof Error ? error.message : error);
+      }
     }
   }
 
@@ -302,13 +311,14 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response) =
   const user = await findUserByEmail(email);
 
   if (user && user.status === UserStatus.ACTIVE) {
-    try {
-      await issueEmailCode(user, 'PASSWORD_RESET');
-    } catch (error) {
-      // A cooldown hit must look identical to every other outcome, otherwise
-      // the response would reveal that the account exists.
-      if (!(error instanceof HttpError && error.statusCode === 429)) throw error;
-    }
+    // Sent in the background: awaiting the email would make responses for
+    // existing accounts measurably slower than for unknown addresses
+    // (account enumeration by timing). Every outcome, including a cooldown
+    // hit or a send failure, gets the same response.
+    void issueEmailCode(user, 'PASSWORD_RESET').catch((error: unknown) => {
+      if (error instanceof HttpError && error.statusCode === 429) return;
+      console.error('Password reset code failed:', error instanceof Error ? error.message : error);
+    });
   }
 
   res.json({ message: FORGOT_PASSWORD_RESPONSE });
