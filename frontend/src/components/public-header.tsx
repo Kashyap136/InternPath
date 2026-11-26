@@ -100,6 +100,7 @@ export function PublicHeader() {
             </ButtonLink>
           ) : (
             <>
+              {pathname !== '/login'}
               {pathname !== '/register' && (
                 <ButtonLink href="/register" size="sm" className="hidden sm:inline-flex">
                   Get started
