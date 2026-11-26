@@ -100,12 +100,7 @@ export function PublicHeader() {
             </ButtonLink>
           ) : (
             <>
-              {pathname !== '/login' && (
-                // Below 360px only the wordmark + menu fit; Sign in is in the menu.
-                <ButtonLink href="/login" variant="ghost" size="sm" className="max-[359px]:hidden">
-                  Sign in
-                </ButtonLink>
-              )}
+              {pathname !== '/login'}
               {pathname !== '/register' && (
                 <ButtonLink href="/register" size="sm" className="hidden sm:inline-flex">
                   Get started
