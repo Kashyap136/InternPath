@@ -184,6 +184,47 @@ export function isEmailConfigured(): boolean {
   return isGmailApiConfigured() || Boolean(cfg.host && cfg.from);
 }
 
+/**
+ * Startup self-check (logs only, never throws, never logs secrets): which
+ * transport is active and, for the Gmail API, whether the refresh token can
+ * actually mint an access token. Makes a broken email setup visible in the
+ * deploy log instead of only when a user requests a code.
+ */
+export async function logEmailTransportStatus(): Promise<void> {
+  const gmail = gmailApiConfig();
+  const smtp = smtpConfig();
+  const fromAddress = (gmail.from.match(/<([^>]+)>/)?.[1] ?? gmail.from).trim();
+  if (isGmailApiConfigured()) {
+    try {
+      await getGmailAccessToken();
+      log({ event: 'email_transport_ok', via: 'gmail_api', from: maskAddress(fromAddress) });
+    } catch (error) {
+      log({
+        event: 'email_transport_broken',
+        via: 'gmail_api',
+        from: maskAddress(fromAddress),
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+    }
+    return;
+  }
+  if (smtp.host && smtp.from) {
+    const placeholder = /REPLACE_ME/i.test(`${smtp.host} ${smtp.user} ${smtp.pass} ${smtp.from}`);
+    log({
+      event: placeholder ? 'email_transport_broken' : 'email_transport_configured',
+      via: 'smtp',
+      host: smtp.host,
+      port: smtp.port,
+      ...(placeholder ? { error: 'SMTP_* / EMAIL_FROM still contain REPLACE_ME placeholder values' } : {}),
+      ...(process.env.RENDER
+        ? { warning: 'Render free instances block outbound SMTP ports; use the Gmail API (GMAIL_REFRESH_TOKEN) instead' }
+        : {}),
+    });
+    return;
+  }
+  log({ event: 'email_transport_missing', reason: describeMissingConfig() });
+}
+
 function describeMissingConfig(): string {
   const gmail = gmailApiConfig();
   if (gmail.refreshToken) {

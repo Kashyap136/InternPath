@@ -6,6 +6,7 @@ import app from './app';
 import { prisma } from './shared/prisma/client';
 import { startScheduler } from './shared/scheduler';
 import { applyPendingMigrations } from './shared/prisma/migrate-on-start';
+import { logEmailTransportStatus } from './shared/email/mailer';
 
 const PORT = config.PORT;
 
@@ -32,6 +33,7 @@ async function startServer(): Promise<void> {
       console.log(`📝 Environment: ${config.NODE_ENV}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       startScheduler();
+      void logEmailTransportStatus();
     });
 
     // Graceful shutdown

@@ -53,9 +53,19 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  // Log error for debugging (in production, use proper logging service)
+  // Log error for debugging (in production, use proper logging service).
+  // Expected client errors (401 from a signed-out /api/auth/me probe, 403,
+  // 404, validation failures…) get one line; only server faults get the
+  // full stack trace, so real problems are not buried in log noise.
   if (process.env.NODE_ENV !== 'test') {
-    console.error('❌ Error:', err);
+    const status =
+      err instanceof HttpError || err instanceof AppError ? err.statusCode : err instanceof ZodError ? 400 : 500;
+    if (status < 500) {
+      const code = err instanceof HttpError || err instanceof AppError ? err.code : 'VALIDATION_ERROR';
+      console.warn(`⚠️ ${status} ${code ?? ''} ${_req.method} ${_req.originalUrl}: ${err.message}`.replace(/\s+/g, ' '));
+    } else {
+      console.error('❌ Error:', err);
+    }
   }
 
   // Zod validation errors
